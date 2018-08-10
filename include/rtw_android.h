@@ -11,6 +11,10 @@
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
  *
  ******************************************************************************/
 
@@ -62,6 +66,7 @@ enum ANDROID_WIFI_CMD {
 	ANDROID_WIFI_CMD_WFD_SET_MAX_TPUT,
 	ANDROID_WIFI_CMD_WFD_SET_DEVTYPE,
 
+	ANDROID_WIFI_CMD_P2P_DISABLE,
 	ANDROID_WIFI_CMD_MAX
 };
 
@@ -82,4 +87,4 @@ static int rtw_android_wifictrl_func_add(void) { return 0; }
 static void rtw_android_wifictrl_func_del(void) {}
 #endif /* defined(RTW_ENABLE_WIFI_CONTROL_FUNC) */
 
-#endif /* __RTW_ANDROID_H__ */
+#endif //__RTW_ANDROID_H__

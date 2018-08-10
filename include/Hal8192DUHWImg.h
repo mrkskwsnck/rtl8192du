@@ -11,6 +11,10 @@
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
  *
  ******************************************************************************/
 #ifndef __INC_HAL8192DU_FW_IMG_H
@@ -20,7 +24,8 @@
 
 /*Created on  2011/11/11,  8: 8*/
 
-#define Rtl8192DUImgArrayLength 32302
+#define Rtl8192DUImgArrayLength 31452
+extern const u8 Rtl8192DUFwImgArray[Rtl8192DUImgArrayLength];
 #define Rtl8192DUMainArrayLength 1
 extern const u8 Rtl8192DUFwMainArray[Rtl8192DUMainArrayLength];
 #define Rtl8192DUDataArrayLength 1
@@ -58,4 +63,4 @@ extern const u32 Rtl8192DUAGCTAB_2TArray[Rtl8192DUAGCTAB_2TArrayLength];
 #define Rtl8192DUAGCTAB_1TArrayLength 1
 extern const u32 Rtl8192DUAGCTAB_1TArray[Rtl8192DUAGCTAB_1TArrayLength];
 
-#endif /* __INC_HAL8192CU_FW_IMG_H */
+#endif //__INC_HAL8192CU_FW_IMG_H

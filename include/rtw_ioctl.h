@@ -11,6 +11,10 @@
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
  *
  ******************************************************************************/
 #ifndef _RTW_IOCTL_H_
@@ -29,7 +33,7 @@
 #endif
 
 
-/*  For DDK-defined OIDs */
+// For DDK-defined OIDs
 #define OID_NDIS_SEG1	0x00010100
 #define OID_NDIS_SEG2	0x00010200
 #define OID_NDIS_SEG3	0x00020100
@@ -52,7 +56,7 @@
 #define SZ_OID_NDIS_SEG9		  24
 #define SZ_OID_NDIS_SEG10		  19
 
-/*  For Realtek-defined OIDs */
+// For Realtek-defined OIDs
 #define OID_MP_SEG1		0xFF871100
 #define OID_MP_SEG2		0xFF818000
 
@@ -60,9 +64,9 @@
 #define OID_MP_SEG4		0xFF011100
 
 #define DEBUG_OID(dbg, str)			\
-       if ((!dbg))							\
+       if((!dbg))							\
 	{								\
-	   RT_TRACE(_module_rtl871x_ioctl_c_,_drv_info_,("%s(%d): %s", __func__, __LINE__, str));	\
+	   RT_TRACE(_module_rtl871x_ioctl_c_,_drv_info_,("%s(%d): %s", __FUNCTION__, __LINE__, str));	\
 	}
 
 
@@ -73,18 +77,18 @@ enum oid_type
 };
 
 struct oid_funs_node {
-	unsigned int oid_start; /* the starting number for OID */
-	unsigned int oid_end; /* the ending number for OID */
+	unsigned int oid_start; //the starting number for OID
+	unsigned int oid_end; //the ending number for OID
 	struct oid_obj_priv *node_array;
-	unsigned int array_sz; /* the size of node_array */
-	int query_counter; /* count the number of query hits for this segment */
-	int set_counter; /* count the number of set hits for this segment */
+	unsigned int array_sz; //the size of node_array
+	int query_counter; //count the number of query hits for this segment
+	int set_counter; //count the number of set hits for this segment
 };
 
 struct oid_par_priv
 {
 	void		*adapter_context;
-	uint	oid;
+	NDIS_OID	oid;
 	void		*information_buf;
 	u32		information_buf_len;
 	u32		*bytes_rw;
@@ -94,30 +98,39 @@ struct oid_par_priv
 };
 
 struct oid_obj_priv {
-	unsigned char	dbg; /*  0: without OID debug message  1: with OID debug message */
-	uint (*oidfuns)(struct oid_par_priv *poid_par_priv);
+	unsigned char	dbg; // 0: without OID debug message  1: with OID debug message
+	NDIS_STATUS (*oidfuns)(struct oid_par_priv *poid_par_priv);
 };
 
-#if defined(CONFIG_WIRELESS_EXT)
+#if (defined(CONFIG_MP_INCLUDED) && defined(_RTW_MP_IOCTL_C_))
+static NDIS_STATUS oid_null_function(struct oid_par_priv* poid_par_priv)
+{
+	_func_enter_;
+	_func_exit_;
+	return NDIS_STATUS_SUCCESS;
+}
+#endif
+
+#if defined(PLATFORM_LINUX) && defined(CONFIG_WIRELESS_EXT)
 extern struct iw_handler_def  rtw_handlers_def;
 #endif
 
-extern	uint drv_query_info(
-		struct net_device *MiniportadapterContext,
-		uint		Oid,
-		void *InformationBuffer,
-		u32 InformationBufferLength,
-		u32 *BytesWritten,
-		u32 *BytesNeeded
+extern	NDIS_STATUS drv_query_info(
+	IN	_nic_hdl		MiniportAdapterContext,
+	IN	NDIS_OID		Oid,
+	IN	void *			InformationBuffer,
+	IN	u32			InformationBufferLength,
+	OUT	u32*			BytesWritten,
+	OUT	u32*			BytesNeeded
 	);
 
-extern	uint	drv_set_info(
-		struct net_device *MiniportadapterContext,
-		uint		Oid,
-		void *InformationBuffer,
-		u32	InformationBufferLength,
-		u32 *BytesRead,
-		u32 *BytesNeeded
+extern	NDIS_STATUS	drv_set_info(
+	IN	_nic_hdl		MiniportAdapterContext,
+	IN	NDIS_OID		Oid,
+	IN	void *			InformationBuffer,
+	IN	u32			InformationBufferLength,
+	OUT	u32*			BytesRead,
+	OUT	u32*			BytesNeeded
 	);
 
-#endif /*  #ifndef __INC_CEINFO_ */
+#endif // #ifndef __INC_CEINFO_

@@ -11,6 +11,10 @@
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
  *
  ******************************************************************************/
 #define _RTL8192D_XMIT_C_
@@ -20,11 +24,12 @@
 #include <drv_types.h>
 #include <rtl8192d_hal.h>
 
+#ifdef CONFIG_XMIT_ACK
 void dump_txrpt_ccx_8192d(void *buf)
 {
 	struct txrpt_ccx_8192d *txrpt_ccx = buf;
 
-	DBG_8192D("%s:\n"
+	DBG_871X("%s:\n"
 		"retry_cnt:%u, rsvd_0:%u, rts_retry_cnt:%u, rsvd_1:%u\n"
 		"ccx_qtime:%u, missed_pkt_num:%u, rsvd_4:%u\n"
 		"mac_id:%u, des1_fragssn:%u\n"
@@ -39,7 +44,7 @@ void dump_txrpt_ccx_8192d(void *buf)
 	);
 }
 
-void handle_txrpt_ccx_8192d(struct rtw_adapter *adapter, void *buf)
+void handle_txrpt_ccx_8192d(_adapter *adapter, void *buf)
 {
 	struct txrpt_ccx_8192d *txrpt_ccx = buf;
 
@@ -47,10 +52,11 @@ void handle_txrpt_ccx_8192d(struct rtw_adapter *adapter, void *buf)
 	dump_txrpt_ccx_8192d(buf);
 	#endif
 
-	if (txrpt_ccx->int_ccx) {
+	//if (txrpt_ccx->int_ccx) {
 		if (txrpt_ccx->pkt_ok)
 			rtw_ack_tx_done(&adapter->xmitpriv, RTW_SCTX_DONE_SUCCESS);
 		else
 			rtw_ack_tx_done(&adapter->xmitpriv, RTW_SCTX_DONE_CCX_PKT_FAIL);
-	}
+	//}
 }
+#endif //CONFIG_XMIT_ACK

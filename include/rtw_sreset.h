@@ -11,6 +11,10 @@
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
  *
  ******************************************************************************/
 #ifndef _RTW_SRESET_C_
@@ -20,15 +24,34 @@
 #include <osdep_service.h>
 #include <drv_types.h>
 
+enum {
+	SRESET_TGP_NULL = 0,
+	SRESET_TGP_XMIT_STATUS = 1,
+	SRESET_TGP_LINK_STATUS = 2,
+};
+
 struct sreset_priv {
 	_mutex	silentreset_mutex;
 	u8	silent_reset_inprogress;
 	u8	Wifi_Error_Status;
 	unsigned long last_tx_time;
 	unsigned long last_tx_complete_time;
+
+	s32 dbg_trigger_point;
 };
 
+#ifdef CONFIG_RTL8192C
+#include <rtl8192c_hal.h>
+#endif
+#ifdef CONFIG_RTL8192D
 #include <rtl8192d_hal.h>
+#endif
+#ifdef CONFIG_RTL8723A
+#include <rtl8723a_hal.h>
+#endif
+#ifdef CONFIG_RTL8188E
+#include <rtl8188e_hal.h>
+#endif
 
 #define	WIFI_STATUS_SUCCESS		0
 #define	USB_VEN_REQ_CMD_FAIL	BIT0
@@ -39,16 +62,12 @@ struct sreset_priv {
 #define	WIFI_RX_HANG				BIT5
 #define		WIFI_IF_NOT_EXIST			BIT6
 
-#if defined(DBG_CONFIG_ERROR_DETECT)
-void sreset_init_value(struct rtw_adapter *padapter);
-void sreset_reset_value(struct rtw_adapter *padapter);
-u8 sreset_get_wifi_status(struct rtw_adapter *padapter);
-void sreset_set_wifi_error_status(struct rtw_adapter *padapter, u32 status);
-#else
-static void sreset_init_value(struct rtw_adapter *padapter) {}
-static void sreset_reset_value(struct rtw_adapter *padapter) {}
-static u8 sreset_get_wifi_status(struct rtw_adapter *padapter) {return WIFI_STATUS_SUCCESS;}
-static void sreset_set_wifi_error_status(struct rtw_adapter *padapter, u32 status) {}
-#endif
+void sreset_init_value(_adapter *padapter);
+void sreset_reset_value(_adapter *padapter);
+u8 sreset_get_wifi_status(_adapter *padapter);
+void sreset_set_wifi_error_status(_adapter *padapter, u32 status);
+void sreset_set_trigger_point(_adapter *padapter, s32 tgp);
+bool sreset_inprogress(_adapter *padapter);
+void sreset_reset(_adapter *padapter);
 
 #endif

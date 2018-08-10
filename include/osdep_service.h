@@ -11,22 +11,31 @@
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
  *
  ******************************************************************************/
 #ifndef __OSDEP_SERVICE_H_
 #define __OSDEP_SERVICE_H_
 
-#include <linux/version.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
-#include <linux/sched/signal.h>
-#endif
 #include <drv_conf.h>
 #include <basic_types.h>
+//#include <rtl871x_byteorder.h>
 
 #define _FAIL		0
 #define _SUCCESS	1
 #define RTW_RX_HANDLED 2
+//#define RTW_STATUS_TIMEDOUT -110
 
+#undef _TRUE
+#define _TRUE		1
+
+#undef _FALSE
+#define _FALSE		0
+
+#ifdef PLATFORM_LINUX
 	#include <linux/version.h>
 	#include <linux/spinlock.h>
 	#include <linux/compiler.h>
@@ -38,8 +47,10 @@
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,5))
 	#include <linux/kref.h>
 #endif
+	//#include <linux/smp_lock.h>
 	#include <linux/netdevice.h>
 	#include <linux/skbuff.h>
+	#include <linux/circ_buf.h>
 	#include <asm/uaccess.h>
 	#include <asm/byteorder.h>
 	#include <asm/atomic.h>
@@ -52,72 +63,95 @@
 	#include <linux/sem.h>
 	#include <linux/sched.h>
 	#include <linux/etherdevice.h>
-	#include <linux/wireless.h>
 	#include <net/iw_handler.h>
 	#include <linux/if_arp.h>
 	#include <linux/rtnetlink.h>
 	#include <linux/delay.h>
-	#include <linux/proc_fs.h>	/*  Necessary because we use the proc fs */
-	#include <linux/interrupt.h>	/*  for struct tasklet_struct */
+	#include <linux/interrupt.h>	// for struct tasklet_struct
 	#include <linux/ip.h>
 	#include <linux/kthread.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+#include <linux/sched/signal.h>
+#endif
 
+	#ifdef CONFIG_NET_RADIO
+		#define CONFIG_WIRELESS_EXT
+	#endif
+
+#ifdef CONFIG_IOCTL_CFG80211
+//	#include <linux/ieee80211.h>
         #include <net/ieee80211_radiotap.h>
 	#include <net/cfg80211.h>
+#endif //CONFIG_IOCTL_CFG80211
 
 #ifdef CONFIG_TCP_CSUM_OFFLOAD_TX
 	#include <linux/in.h>
 	#include <linux/udp.h>
 #endif
 
+#ifdef CONFIG_USB_HCI
 	#include <linux/usb.h>
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,21))
 	#include <linux/usb_ch9.h>
 #else
 	#include <linux/usb/ch9.h>
 #endif
+#endif
 
+#ifdef CONFIG_PCI_HCI
+	#include <linux/pci.h>
+#endif
+
+
+#ifdef CONFIG_USB_HCI
+	typedef struct urb *  PURB;
 #if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,22))
 #ifdef CONFIG_USB_SUSPEND
 #define CONFIG_AUTOSUSPEND	1
 #endif
 #endif
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0))
-static inline void ether_addr_copy(u8 *dst, const u8 *src)
-{
-#if defined(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS)
-        *(u32 *)dst = *(const u32 *)src;
-        *(u16 *)(dst + 4) = *(const u16 *)(src + 4);
-#else
-        u16 *a = (u16 *)dst;
-        const u16 *b = (const u16 *)src;
-
-        a[0] = b[0];
-        a[1] = b[1];
-        a[2] = b[2];
-#endif
-}
 #endif
 
+	typedef struct	semaphore _sema;
+	typedef	spinlock_t	_lock;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
-	#define _mutex	struct mutex
+	typedef struct mutex		_mutex;
 #else
-	#define _mutex	struct semaphore
+	typedef struct semaphore	_mutex;
 #endif
+	typedef struct timer_list _timer;
+
 	struct	__queue	{
 		struct	list_head	queue;
-		spinlock_t	lock;
+		_lock	lock;
 	};
 
+	typedef	struct sk_buff	_pkt;
+	typedef unsigned char	_buffer;
+
+	typedef struct	__queue	_queue;
+	typedef struct	list_head	_list;
+	typedef	int	_OS_STATUS;
+	//typedef u32	_irqL;
+	typedef unsigned long _irqL;
+	typedef	struct	net_device * _nic_hdl;
+
+	typedef void*		_thread_hdl_;
+	typedef int		thread_return;
+	typedef void*	thread_context;
+
 	#define thread_exit() complete_and_exit(NULL, 0)
+
+	typedef void timer_hdl_return;
+	typedef void* timer_hdl_context;
+	typedef struct work_struct _workitem;
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24))
 	#define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : ((1ULL<<(n))-1))
 #endif
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,22))
-/*  Porting from linux kernel, for compatible with old kernel. */
+// Porting from linux kernel, for compatible with old kernel.
 static inline unsigned char *skb_tail_pointer(const struct sk_buff *skb)
 {
 	return skb->tail;
@@ -139,12 +173,52 @@ static inline unsigned char *skb_end_pointer(const struct sk_buff *skb)
 }
 #endif
 
-static inline struct list_head *get_list_head(struct __queue *queue)
+__inline static _list *get_next(_list	*list)
+{
+	return list->next;
+}
+
+__inline static _list	*get_list_head(_queue	*queue)
 {
 	return (&(queue->queue));
 }
 
-static inline void _enter_critical_mutex(_mutex *pmutex)
+
+#define LIST_CONTAINOR(ptr, type, member) \
+        ((type *)((char *)(ptr)-(SIZE_T)(&((type *)0)->member)))
+
+
+__inline static void _enter_critical(_lock *plock, _irqL *pirqL)
+{
+	spin_lock_irqsave(plock, *pirqL);
+}
+
+__inline static void _exit_critical(_lock *plock, _irqL *pirqL)
+{
+	spin_unlock_irqrestore(plock, *pirqL);
+}
+
+__inline static void _enter_critical_ex(_lock *plock, _irqL *pirqL)
+{
+	spin_lock_irqsave(plock, *pirqL);
+}
+
+__inline static void _exit_critical_ex(_lock *plock, _irqL *pirqL)
+{
+	spin_unlock_irqrestore(plock, *pirqL);
+}
+
+__inline static void _enter_critical_bh(_lock *plock, _irqL *pirqL)
+{
+	spin_lock_bh(plock);
+}
+
+__inline static void _exit_critical_bh(_lock *plock, _irqL *pirqL)
+{
+	spin_unlock_bh(plock);
+}
+
+__inline static void _enter_critical_mutex(_mutex *pmutex, _irqL *pirqL)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
 		mutex_lock(pmutex);
@@ -154,7 +228,7 @@ static inline void _enter_critical_mutex(_mutex *pmutex)
 }
 
 
-static inline void _exit_critical_mutex(_mutex *pmutex)
+__inline static void _exit_critical_mutex(_mutex *pmutex, _irqL *pirqL)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
 		mutex_unlock(pmutex);
@@ -163,33 +237,41 @@ static inline void _exit_critical_mutex(_mutex *pmutex)
 #endif
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
-static inline void _init_timer(struct timer_list *timer, struct net_device * nic_hdl, void *pfunc, void *cntx)
+__inline static void rtw_list_delete(_list *plist)
 {
-	timer->function = pfunc;
-	timer->data = (unsigned long)cntx;
-	init_timer(timer);
+	list_del_init(plist);
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+__inline static void _init_timer(_timer *ptimer,_nic_hdl nic_hdl,void *pfunc,void* cntx)
+{
+	//setup_timer(ptimer, pfunc,(u32)cntx);
+	ptimer->function = pfunc;
+	ptimer->data = (unsigned long)cntx;
+	init_timer(ptimer);
 }
 #endif
 
-static inline void _set_timer(struct timer_list *timer,u32 delay_time)
+__inline static void _set_timer(_timer *ptimer,u32 delay_time)
 {
-	mod_timer(timer , (jiffies+(delay_time*HZ/1000)));
+	mod_timer(ptimer , (jiffies+(delay_time*HZ/1000)));
 }
 
-static inline void _cancel_timer(struct timer_list *timer,u8 *bcancelled)
+__inline static void _cancel_timer(_timer *ptimer,u8 *bcancelled)
 {
-	del_timer_sync(timer);
-	*bcancelled=  true;
+	del_timer_sync(ptimer);
+	*bcancelled=  _TRUE;//TRUE ==1; FALSE==0
 }
 
+#ifdef PLATFORM_LINUX
 #define RTW_TIMER_HDL_ARGS void *FunctionContext
+#endif
 
 #define RTW_TIMER_HDL_NAME(name) rtw_##name##_timer_hdl
 #define RTW_DECLARE_TIMER_HDL(name) void RTW_TIMER_HDL_NAME(name)(RTW_TIMER_HDL_ARGS)
 
 
-static inline void _init_workitem(struct work_struct *pwork, void *pfunc, void * cntx)
+__inline static void _init_workitem(_workitem *pwork, void *pfunc, PVOID cntx)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,20))
 	INIT_WORK(pwork, pfunc);
@@ -198,12 +280,12 @@ static inline void _init_workitem(struct work_struct *pwork, void *pfunc, void *
 #endif
 }
 
-static inline void _set_workitem(struct work_struct *pwork)
+__inline static void _set_workitem(_workitem *pwork)
 {
 	schedule_work(pwork);
 }
 
-static inline void _cancel_workitem_sync(struct work_struct *pwork)
+__inline static void _cancel_workitem_sync(_workitem *pwork)
 {
 #if (LINUX_VERSION_CODE>=KERNEL_VERSION(2,6,22))
 	cancel_work_sync(pwork);
@@ -212,9 +294,9 @@ static inline void _cancel_workitem_sync(struct work_struct *pwork)
 #endif
 }
 
-/*  */
-/*  Global Mutex: can only be used at PASSIVE level. */
-/*  */
+//
+// Global Mutex: can only be used at PASSIVE level.
+//
 
 #define ACQUIRE_GLOBAL_MUTEX(_MutexCounter)                              \
 {                                                               \
@@ -236,7 +318,7 @@ static inline int rtw_netif_queue_stopped(struct net_device *pnetdev)
 	return (netif_tx_queue_stopped(netdev_get_tx_queue(pnetdev, 0)) &&
 		netif_tx_queue_stopped(netdev_get_tx_queue(pnetdev, 1)) &&
 		netif_tx_queue_stopped(netdev_get_tx_queue(pnetdev, 2)) &&
-		netif_tx_queue_stopped(netdev_get_tx_queue(pnetdev, 3)));
+		netif_tx_queue_stopped(netdev_get_tx_queue(pnetdev, 3)) );
 #else
 	return netif_queue_stopped(pnetdev);
 #endif
@@ -269,55 +351,198 @@ static inline void rtw_netif_stop_queue(struct net_device *pnetdev)
 #endif
 }
 
+#endif	// PLATFORM_LINUX
+
+#include <rtw_byteorder.h>
 
 #ifndef BIT
-	#define BIT(x)	(1 << (x))
+	#define BIT(x)	( 1 << (x))
 #endif
 
 extern int RTW_STATUS_CODE(int error_code);
 
-/* flags used for rtw_update_mem_stat() */
-enum {
-	MEM_STAT_VIR_ALLOC_SUCCESS,
-	MEM_STAT_VIR_ALLOC_FAIL,
-	MEM_STAT_VIR_FREE,
-	MEM_STAT_PHY_ALLOC_SUCCESS,
-	MEM_STAT_PHY_ALLOC_FAIL,
-	MEM_STAT_PHY_FREE,
-	MEM_STAT_TX, /* used to distinguish TX/RX, asigned from caller */
-	MEM_STAT_TX_ALLOC_SUCCESS,
-	MEM_STAT_TX_ALLOC_FAIL,
-	MEM_STAT_TX_FREE,
-	MEM_STAT_RX, /* used to distinguish TX/RX, asigned from caller */
-	MEM_STAT_RX_ALLOC_SUCCESS,
-	MEM_STAT_RX_ALLOC_FAIL,
-	MEM_STAT_RX_FREE
+#define CONFIG_USE_VMALLOC
+
+/* flags used for rtw_mstat_update() */
+enum mstat_f {
+	/* type: 0x00ff */
+	MSTAT_TYPE_VIR = 0x00,
+	MSTAT_TYPE_PHY= 0x01,
+	MSTAT_TYPE_SKB = 0x02,
+	MSTAT_TYPE_USB = 0x03,
+	MSTAT_TYPE_MAX = 0x04,
+
+	/* func: 0xff00 */
+	MSTAT_FUNC_UNSPECIFIED = 0x00<<8,
+	MSTAT_FUNC_IO = 0x01<<8,
+	MSTAT_FUNC_TX_IO = 0x02<<8,
+	MSTAT_FUNC_RX_IO = 0x03<<8,
+	MSTAT_FUNC_TX = 0x04<<8,
+	MSTAT_FUNC_RX = 0x05<<8,
+	MSTAT_FUNC_MAX = 0x06<<8,
 };
 
-#define rtw_update_mem_stat(flag, sz) do {} while (0)
+#define mstat_tf_idx(flags) ((flags)&0xff)
+#define mstat_ff_idx(flags) (((flags)&0xff00) >> 8)
 
+typedef enum mstat_status{
+	MSTAT_ALLOC_SUCCESS = 0,
+	MSTAT_ALLOC_FAIL,
+	MSTAT_FREE
+} MSTAT_STATUS;
+
+#ifdef DBG_MEM_ALLOC
+void rtw_mstat_update(const enum mstat_f flags, const MSTAT_STATUS status, u32 sz);
+void rtw_mstat_dump(void *sel);
+u8* dbg_rtw_vmalloc(u32 sz, const enum mstat_f flags, const char *func, const int line);
+u8* dbg_rtw_zvmalloc(u32 sz, const enum mstat_f flags, const char *func, const int line);
+void dbg_rtw_vmfree(u8 *pbuf, const enum mstat_f flags, u32 sz, const char *func, const int line);
+u8* dbg_rtw_malloc(u32 sz, const enum mstat_f flags, const char *func, const int line);
+u8* dbg_rtw_zmalloc(u32 sz, const enum mstat_f flags, const char *func, const int line);
+void dbg_rtw_mfree(u8 *pbuf, const enum mstat_f flags, u32 sz, const char *func, const int line);
+
+struct sk_buff * dbg_rtw_skb_alloc(unsigned int size, const enum mstat_f flags, const char *func, const int line);
+void dbg_rtw_skb_free(struct sk_buff *skb, const enum mstat_f flags, const char *func, const int line);
+struct sk_buff *dbg_rtw_skb_copy(const struct sk_buff *skb, const enum mstat_f flags, const char *func, const int line);
+struct sk_buff *dbg_rtw_skb_clone(struct sk_buff *skb, const enum mstat_f flags, const char *func, const int line);
+int dbg_rtw_netif_rx(_nic_hdl ndev, struct sk_buff *skb, const enum mstat_f flags, const char *func, int line);
+void dbg_rtw_skb_queue_purge(struct sk_buff_head *list, enum mstat_f flags, const char *func, int line);
+
+#ifdef CONFIG_USB_HCI
+void *dbg_rtw_usb_buffer_alloc(struct usb_device *dev, size_t size, dma_addr_t *dma, const enum mstat_f flags, const char *func, const int line);
+void dbg_rtw_usb_buffer_free(struct usb_device *dev, size_t size, void *addr, dma_addr_t dma, const enum mstat_f flags, const char *func, const int line);
+#endif /* CONFIG_USB_HCI */
+
+#ifdef CONFIG_USE_VMALLOC
+#define rtw_vmalloc(sz)			dbg_rtw_vmalloc((sz), MSTAT_TYPE_VIR, __FUNCTION__, __LINE__)
+#define rtw_zvmalloc(sz)			dbg_rtw_zvmalloc((sz), MSTAT_TYPE_VIR, __FUNCTION__, __LINE__)
+#define rtw_vmfree(pbuf, sz)		dbg_rtw_vmfree((pbuf), (sz), MSTAT_TYPE_VIR, __FUNCTION__, __LINE__)
+#define rtw_vmalloc_f(sz, mstat_f)			dbg_rtw_vmalloc((sz), ((mstat_f)&0xff00)|MSTAT_TYPE_VIR, __FUNCTION__, __LINE__)
+#define rtw_zvmalloc_f(sz, mstat_f)		dbg_rtw_zvmalloc((sz), ((mstat_f)&0xff00)|MSTAT_TYPE_VIR, __FUNCTION__, __LINE__)
+#define rtw_vmfree_f(pbuf, sz, mstat_f)	dbg_rtw_vmfree((pbuf), (sz), ((mstat_f)&0xff00)|MSTAT_TYPE_VIR, __FUNCTION__, __LINE__)
+#else /* CONFIG_USE_VMALLOC */
+#define rtw_vmalloc(sz)			dbg_rtw_malloc((sz), MSTAT_TYPE_PHY, __FUNCTION__, __LINE__)
+#define rtw_zvmalloc(sz)			dbg_rtw_zmalloc((sz), MSTAT_TYPE_PHY, __FUNCTION__, __LINE__)
+#define rtw_vmfree(pbuf, sz)		dbg_rtw_mfree((pbuf), (sz), MSTAT_TYPE_PHY, __FUNCTION__, __LINE__)
+#define rtw_vmalloc_f(sz, mstat_f)			dbg_rtw_malloc((sz), ((mstat_f)&0xff00)|MSTAT_TYPE_PHY, __FUNCTION__, __LINE__)
+#define rtw_zvmalloc_f(sz, mstat_f)		dbg_rtw_zmalloc((sz), ((mstat_f)&0xff00)|MSTAT_TYPE_PHY, __FUNCTION__, __LINE__)
+#define rtw_vmfree_f(pbuf, sz, mstat_f)	dbg_rtw_mfree((pbuf), (sz), ((mstat_f)&0xff00)|MSTAT_TYPE_PHY, __FUNCTION__, __LINE__)
+#endif /* CONFIG_USE_VMALLOC */
+#define rtw_malloc(sz)			dbg_rtw_malloc((sz), MSTAT_TYPE_PHY, __FUNCTION__, __LINE__)
+#define rtw_zmalloc(sz)			dbg_rtw_zmalloc((sz), MSTAT_TYPE_PHY, __FUNCTION__, __LINE__)
+#define rtw_mfree(pbuf, sz)		dbg_rtw_mfree((pbuf), (sz), MSTAT_TYPE_PHY, __FUNCTION__, __LINE__)
+#define rtw_malloc_f(sz, mstat_f)			dbg_rtw_malloc((sz), ((mstat_f)&0xff00)|MSTAT_TYPE_PHY, __FUNCTION__, __LINE__)
+#define rtw_zmalloc_f(sz, mstat_f)			dbg_rtw_zmalloc((sz), ((mstat_f)&0xff00)|MSTAT_TYPE_PHY, __FUNCTION__, __LINE__)
+#define rtw_mfree_f(pbuf, sz, mstat_f)		dbg_rtw_mfree((pbuf), (sz), ((mstat_f)&0xff00)|MSTAT_TYPE_PHY, __FUNCTION__, __LINE__)
+
+#define rtw_skb_alloc(size)	dbg_rtw_skb_alloc((size), MSTAT_TYPE_SKB, __FUNCTION__, __LINE__)
+#define rtw_skb_free(skb)	dbg_rtw_skb_free((skb), MSTAT_TYPE_SKB, __FUNCTION__, __LINE__)
+#define rtw_skb_alloc_f(size, mstat_f)	dbg_rtw_skb_alloc((size), ((mstat_f)&0xff00)|MSTAT_TYPE_SKB, __FUNCTION__, __LINE__)
+#define rtw_skb_free_f(skb, mstat_f)	dbg_rtw_skb_free((skb), ((mstat_f)&0xff00)|MSTAT_TYPE_SKB, __FUNCTION__, __LINE__)
+#define rtw_skb_copy(skb)	dbg_rtw_skb_copy((skb), MSTAT_TYPE_SKB, __FUNCTION__, __LINE__)
+#define rtw_skb_clone(skb)	dbg_rtw_skb_clone((skb), MSTAT_TYPE_SKB, __FUNCTION__, __LINE__)
+#define rtw_skb_copy_f(skb, mstat_f)	dbg_rtw_skb_copy((skb), ((mstat_f)&0xff00)|MSTAT_TYPE_SKB, __FUNCTION__, __LINE__)
+#define rtw_skb_clone_f(skb, mstat_f)	dbg_rtw_skb_clone((skb), ((mstat_f)&0xff00)|MSTAT_TYPE_SKB, __FUNCTION__, __LINE__)
+#define rtw_netif_rx(ndev, skb)	dbg_rtw_netif_rx(ndev, skb, MSTAT_TYPE_SKB, __FUNCTION__, __LINE__)
+#define rtw_skb_queue_purge(sk_buff_head) dbg_rtw_skb_queue_purge(sk_buff_head, MSTAT_TYPE_SKB, __FUNCTION__, __LINE__)
+#ifdef CONFIG_USB_HCI
+#define rtw_usb_buffer_alloc(dev, size, dma)		dbg_rtw_usb_buffer_alloc((dev), (size), (dma), MSTAT_TYPE_USB, __FUNCTION__, __LINE__)
+#define rtw_usb_buffer_free(dev, size, addr, dma)	dbg_rtw_usb_buffer_free((dev), (size), (addr), (dma), MSTAT_TYPE_USB, __FUNCTION__, __LINE__)
+#define rtw_usb_buffer_alloc_f(dev, size, dma, mstat_f)			dbg_rtw_usb_buffer_alloc((dev), (size), (dma), ((mstat_f)&0xff00)|MSTAT_TYPE_USB, __FUNCTION__, __LINE__)
+#define rtw_usb_buffer_free_f(dev, size, addr, dma, mstat_f)	dbg_rtw_usb_buffer_free((dev), (size), (addr), (dma), ((mstat_f)&0xff00)|MSTAT_TYPE_USB, __FUNCTION__, __LINE__)
+#endif /* CONFIG_USB_HCI */
+
+#else /* DBG_MEM_ALLOC */
+#define rtw_mstat_update(flag, status, sz) do {} while(0)
+#define rtw_mstat_dump(sel) do {} while(0)
+u8*	_rtw_vmalloc(u32 sz);
+u8*	_rtw_zvmalloc(u32 sz);
+void	_rtw_vmfree(u8 *pbuf, u32 sz);
+u8*	_rtw_zmalloc(u32 sz);
+u8*	_rtw_malloc(u32 sz);
+void	_rtw_mfree(u8 *pbuf, u32 sz);
+
+struct sk_buff *_rtw_skb_alloc(u32 sz);
+void _rtw_skb_free(struct sk_buff *skb);
+struct sk_buff *_rtw_skb_copy(const struct sk_buff *skb);
+struct sk_buff *_rtw_skb_clone(struct sk_buff *skb);
+int _rtw_netif_rx(_nic_hdl ndev, struct sk_buff *skb);
+void _rtw_skb_queue_purge(struct sk_buff_head *list);
+
+#ifdef CONFIG_USB_HCI
+void *_rtw_usb_buffer_alloc(struct usb_device *dev, size_t size, dma_addr_t *dma);
+void _rtw_usb_buffer_free(struct usb_device *dev, size_t size, void *addr, dma_addr_t dma);
+#endif /* CONFIG_USB_HCI */
+
+#ifdef CONFIG_USE_VMALLOC
+#define rtw_vmalloc(sz)			_rtw_vmalloc((sz))
+#define rtw_zvmalloc(sz)			_rtw_zvmalloc((sz))
+#define rtw_vmfree(pbuf, sz)		_rtw_vmfree((pbuf), (sz))
+#define rtw_vmalloc_f(sz, mstat_f)			_rtw_vmalloc((sz))
+#define rtw_zvmalloc_f(sz, mstat_f)		_rtw_zvmalloc((sz))
+#define rtw_vmfree_f(pbuf, sz, mstat_f)	_rtw_vmfree((pbuf), (sz))
+#else /* CONFIG_USE_VMALLOC */
+#define rtw_vmalloc(sz)			_rtw_malloc((sz))
+#define rtw_zvmalloc(sz)			_rtw_zmalloc((sz))
+#define rtw_vmfree(pbuf, sz)		_rtw_mfree((pbuf), (sz))
+#define rtw_vmalloc_f(sz, mstat_f)			_rtw_malloc((sz))
+#define rtw_zvmalloc_f(sz, mstat_f)		_rtw_zmalloc((sz))
+#define rtw_vmfree_f(pbuf, sz, mstat_f)	_rtw_mfree((pbuf), (sz))
+#endif /* CONFIG_USE_VMALLOC */
+#define rtw_malloc(sz)			_rtw_malloc((sz))
+#define rtw_zmalloc(sz)			_rtw_zmalloc((sz))
+#define rtw_mfree(pbuf, sz)		_rtw_mfree((pbuf), (sz))
+#define rtw_malloc_f(sz, mstat_f)			_rtw_malloc((sz))
+#define rtw_zmalloc_f(sz, mstat_f)			_rtw_zmalloc((sz))
+#define rtw_mfree_f(pbuf, sz, mstat_f)		_rtw_mfree((pbuf), (sz))
+
+#define rtw_skb_alloc(size) _rtw_skb_alloc((size))
+#define rtw_skb_free(skb) _rtw_skb_free((skb))
+#define rtw_skb_alloc_f(size, mstat_f)	_rtw_skb_alloc((size))
+#define rtw_skb_free_f(skb, mstat_f)	_rtw_skb_free((skb))
+#define rtw_skb_copy(skb)	_rtw_skb_copy((skb))
+#define rtw_skb_clone(skb)	_rtw_skb_clone((skb))
+#define rtw_skb_copy_f(skb, mstat_f)	_rtw_skb_copy((skb))
+#define rtw_skb_clone_f(skb, mstat_f)	_rtw_skb_clone((skb))
+#define rtw_netif_rx(ndev, skb) _rtw_netif_rx(ndev, skb)
+#define rtw_skb_queue_purge(sk_buff_head) _rtw_skb_queue_purge(sk_buff_head)
+#ifdef CONFIG_USB_HCI
+#define rtw_usb_buffer_alloc(dev, size, dma) _rtw_usb_buffer_alloc((dev), (size), (dma))
+#define rtw_usb_buffer_free(dev, size, addr, dma) _rtw_usb_buffer_free((dev), (size), (addr), (dma))
+#define rtw_usb_buffer_alloc_f(dev, size, dma, mstat_f) _rtw_usb_buffer_alloc((dev), (size), (dma))
+#define rtw_usb_buffer_free_f(dev, size, addr, dma, mstat_f) _rtw_usb_buffer_free((dev), (size), (addr), (dma))
+#endif /* CONFIG_USB_HCI */
+#endif /* DBG_MEM_ALLOC */
+
+extern void*	rtw_malloc2d(int h, int w, int size);
+extern void	rtw_mfree2d(void *pbuf, int h, int w, int size);
+
+extern void	_rtw_memcpy(void* dec, void* sour, u32 sz);
 extern int	_rtw_memcmp(void *dst, void *src, u32 sz);
+extern void	_rtw_memset(void *pbuf, int c, u32 sz);
 
-extern u32	rtw_is_list_empty(struct list_head *phead);
-extern void	rtw_list_insert_head(struct list_head *plist, struct list_head *phead);
-extern void	rtw_list_insert_tail(struct list_head *plist, struct list_head *phead);
+extern void	_rtw_init_listhead(_list *list);
+extern u32	rtw_is_list_empty(_list *phead);
+extern void	rtw_list_insert_head(_list *plist, _list *phead);
+extern void	rtw_list_insert_tail(_list *plist, _list *phead);
+extern void	rtw_list_delete(_list *plist);
 
-extern void	_rtw_init_sema(struct  semaphore *sema, int init_val);
-extern void	_rtw_free_sema(struct  semaphore *sema);
-extern void	_rtw_up_sema(struct  semaphore *sema);
-extern u32	_rtw_down_sema(struct  semaphore *sema);
+extern void	_rtw_init_sema(_sema *sema, int init_val);
+extern void	_rtw_free_sema(_sema	*sema);
+extern void	_rtw_up_sema(_sema	*sema);
+extern u32	_rtw_down_sema(_sema *sema);
 extern void	_rtw_mutex_init(_mutex *pmutex);
 extern void	_rtw_mutex_free(_mutex *pmutex);
-extern void	_rtw_spinlock_init(spinlock_t *plock);
-extern void	_rtw_spinlock_free(spinlock_t *plock);
-extern void	_rtw_spinlock(spinlock_t	*plock);
-extern void	_rtw_spinunlock(spinlock_t	*plock);
-extern void	_rtw_spinlock_ex(spinlock_t	*plock);
-extern void	_rtw_spinunlock_ex(spinlock_t	*plock);
+extern void	_rtw_spinlock_init(_lock *plock);
+extern void	_rtw_spinlock_free(_lock *plock);
+extern void	_rtw_spinlock(_lock	*plock);
+extern void	_rtw_spinunlock(_lock	*plock);
+extern void	_rtw_spinlock_ex(_lock	*plock);
+extern void	_rtw_spinunlock_ex(_lock	*plock);
 
-extern void	_rtw_init_queue(struct __queue *pqueue);
-extern u32	_rtw_queue_empty(struct __queue *pqueue);
-extern u32	rtw_end_of_queue_search(struct list_head *queue, struct list_head *pelement);
+extern void	_rtw_init_queue(_queue	*pqueue);
+extern u32	_rtw_queue_empty(_queue	*pqueue);
+extern u32	rtw_end_of_queue_search(_list *queue, _list *pelement);
 
 extern u32	rtw_get_current_time(void);
 extern u32	rtw_systime_to_ms(u32 systime);
@@ -333,8 +558,8 @@ extern void	rtw_usleep_os(int us);
 extern u32	rtw_atoi(u8* s);
 
 #ifdef DBG_DELAY_OS
-#define rtw_mdelay_os(ms) _rtw_mdelay_os((ms), __func__, __LINE__)
-#define rtw_udelay_os(ms) _rtw_udelay_os((ms), __func__, __LINE__)
+#define rtw_mdelay_os(ms) _rtw_mdelay_os((ms), __FUNCTION__, __LINE__)
+#define rtw_udelay_os(ms) _rtw_udelay_os((ms), __FUNCTION__, __LINE__)
 extern void _rtw_mdelay_os(int ms, const char *func, const int line);
 extern void _rtw_udelay_os(int us, const char *func, const int line);
 #else
@@ -345,34 +570,59 @@ extern void	rtw_udelay_os(int us);
 extern void rtw_yield_os(void);
 
 
-static inline unsigned char _cancel_timer_ex(struct timer_list *timer)
+__inline static unsigned char _cancel_timer_ex(_timer *ptimer)
 {
-	return del_timer_sync(timer);
+#ifdef PLATFORM_LINUX
+	return del_timer_sync(ptimer);
+#endif
 }
 
 static __inline void thread_enter(char *name)
 {
-	#ifdef daemonize
+#ifdef PLATFORM_LINUX
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
 	daemonize("%s", name);
 	#endif
 	allow_signal(SIGTERM);
+#endif
 }
 
-static inline void flush_signals_thread(void)
+__inline static void flush_signals_thread(void)
 {
+#ifdef PLATFORM_LINUX
 	if (signal_pending (current))
+	{
 		flush_signals(current);
+	}
+#endif
 }
 
-static inline int res_to_status(int res)
+__inline static _OS_STATUS res_to_status(sint res)
 {
+
+
+#if defined (PLATFORM_LINUX) || defined (PLATFORM_MPIXEL)
 	return res;
+#endif
 }
+
+__inline static void rtw_dump_stack(void)
+{
+#ifdef PLATFORM_LINUX
+	dump_stack();
+#endif
+}
+
+#ifdef PLATFORM_LINUX
+#define rtw_warn_on(condition) WARN_ON(condition)
+#else
+#define rtw_warn_on(condition) do {} while (0)
+#endif
 
 #define _RND(sz, r) ((((sz)+((r)-1))/(r))*(r))
 #define RND4(x)	(((x >> 2) + (((x & 3) == 0) ?  0: 1)) << 2)
 
-static inline u32 _RND4(u32 sz)
+__inline static u32 _RND4(u32 sz)
 {
 
 	u32	val;
@@ -383,7 +633,7 @@ static inline u32 _RND4(u32 sz)
 
 }
 
-static inline u32 _RND8(u32 sz)
+__inline static u32 _RND8(u32 sz)
 {
 
 	u32	val;
@@ -394,7 +644,7 @@ static inline u32 _RND8(u32 sz)
 
 }
 
-static inline u32 _RND128(u32 sz)
+__inline static u32 _RND128(u32 sz)
 {
 
 	u32	val;
@@ -405,7 +655,7 @@ static inline u32 _RND128(u32 sz)
 
 }
 
-static inline u32 _RND256(u32 sz)
+__inline static u32 _RND256(u32 sz)
 {
 
 	u32	val;
@@ -416,7 +666,7 @@ static inline u32 _RND256(u32 sz)
 
 }
 
-static inline u32 _RND512(u32 sz)
+__inline static u32 _RND512(u32 sz)
 {
 
 	u32	val;
@@ -427,7 +677,7 @@ static inline u32 _RND512(u32 sz)
 
 }
 
-static inline u32 bitshift(u32 bitmask)
+__inline static u32 bitshift(u32 bitmask)
 {
 	u32 i;
 
@@ -437,13 +687,28 @@ static inline u32 bitshift(u32 bitmask)
 	return i;
 }
 
-/* ifdef __GNUC__ */
+#ifndef MAC_FMT
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#endif
+#ifndef MAC_ARG
+#define MAC_ARG(x) ((u8*)(x))[0],((u8*)(x))[1],((u8*)(x))[2],((u8*)(x))[3],((u8*)(x))[4],((u8*)(x))[5]
+#endif
+
+//#ifdef __GNUC__
+#ifdef PLATFORM_LINUX
 #define STRUCT_PACKED __attribute__ ((packed))
+#else
+#define STRUCT_PACKED
+#endif
 
-/*  limitation of path length */
+
+// limitation of path length
+#ifdef PLATFORM_LINUX
 	#define PATH_LENGTH_MAX PATH_MAX
+#endif
 
-/*  Suspend lock prevent system from going suspend */
+
+// Suspend lock prevent system from going suspend
 #ifdef CONFIG_WAKELOCK
 #include <linux/wakelock.h>
 #elif defined(CONFIG_ANDROID_POWER)
@@ -454,10 +719,13 @@ extern void rtw_suspend_lock_init(void);
 extern void rtw_suspend_lock_uninit(void);
 extern void rtw_lock_suspend(void);
 extern void rtw_unlock_suspend(void);
+extern void rtw_lock_suspend_timeout(u32 timeout_ms);
 
 
-/* Atomic integer operations */
+//Atomic integer operations
+#ifdef PLATFORM_LINUX
 	#define ATOMIC_T atomic_t
+#endif
 
 extern void ATOMIC_SET(ATOMIC_T *v, int i);
 extern int ATOMIC_READ(ATOMIC_T *v);
@@ -470,12 +738,13 @@ extern int ATOMIC_SUB_RETURN(ATOMIC_T *v, int i);
 extern int ATOMIC_INC_RETURN(ATOMIC_T *v);
 extern int ATOMIC_DEC_RETURN(ATOMIC_T *v);
 
-/* File operation APIs, just for linux now */
-int rtw_is_file_readable(char *path);
-int rtw_retrive_from_file(char *path, u8 __user *buf, u32 sz);
-int rtw_store_to_file(char *path, u8 __user *buf, u32 sz);
+//File operation APIs, just for linux now
+extern int rtw_is_file_readable(char *path);
+extern int rtw_retrive_from_file(char *path, u8* buf, u32 sz);
+extern int rtw_store_to_file(char *path, u8* buf, u32 sz);
 
 
+#if 1 //#ifdef MEM_ALLOC_REFINE_ADAPTOR
 struct rtw_netdev_priv_indicator {
 	void *priv;
 	u32 sizeof_priv;
@@ -483,10 +752,19 @@ struct rtw_netdev_priv_indicator {
 struct net_device *rtw_alloc_etherdev_with_old_priv(int sizeof_priv, void *old_priv);
 extern struct net_device * rtw_alloc_etherdev(int sizeof_priv);
 
-#define rtw_netdev_priv(netdev) (((struct rtw_netdev_priv_indicator *)netdev_priv(netdev))->priv)
+#define rtw_netdev_priv(netdev) ( ((struct rtw_netdev_priv_indicator *)netdev_priv(netdev))->priv )
 
 extern void rtw_free_netdev(struct net_device * netdev);
 
+#else //MEM_ALLOC_REFINE_ADAPTOR
+
+#define rtw_alloc_etherdev(sizeof_priv) alloc_etherdev((sizeof_priv))
+
+#define rtw_netdev_priv(netdev) netdev_priv((netdev))
+#define rtw_free_netdev(netdev) free_netdev((netdev))
+#endif
+
+#ifdef PLATFORM_LINUX
 #define NDEV_FMT "%s"
 #define NDEV_ARG(ndev) ndev->name
 #define ADPT_FMT "%s"
@@ -495,12 +773,24 @@ extern void rtw_free_netdev(struct net_device * netdev);
 #define FUNC_NDEV_ARG(ndev) __func__, ndev->name
 #define FUNC_ADPT_FMT "%s(%s)"
 #define FUNC_ADPT_ARG(adapter) __func__, adapter->pnetdev->name
+#else
+#define NDEV_FMT "%s"
+#define NDEV_ARG(ndev) ""
+#define ADPT_FMT "%s"
+#define ADPT_ARG(adapter) ""
+#define FUNC_NDEV_FMT "%s"
+#define FUNC_NDEV_ARG(ndev) __func__
+#define FUNC_ADPT_FMT "%s"
+#define FUNC_ADPT_ARG(adapter) __func__
+#endif
 
+#ifdef PLATFORM_LINUX
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27))
 #define rtw_signal_process(pid, sig) kill_pid(find_vpid((pid)),(sig), 1)
-#else /* LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27)) */
+#else //(LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27))
 #define rtw_signal_process(pid, sig) kill_proc((pid), (sig), 1)
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27)) */
+#endif //(LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27))
+#endif //PLATFORM_LINUX
 
 extern u64 rtw_modular64(u64 x, u64 y);
 extern u64 rtw_division64(u64 x, u64 y);

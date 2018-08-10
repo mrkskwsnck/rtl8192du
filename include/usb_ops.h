@@ -11,6 +11,10 @@
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
  *
  ******************************************************************************/
 #ifndef __USB_OPS_H_
@@ -31,9 +35,10 @@ enum{
 	VENDOR_READ = 0x01,
 };
 #define ALIGNMENT_UNIT				16
-#define MAX_VENDOR_REQ_CMD_SIZE	254		/* 8188cu SIE Support */
+#define MAX_VENDOR_REQ_CMD_SIZE	254		//8188cu SIE Support
 #define MAX_USB_IO_CTL_SIZE		(MAX_VENDOR_REQ_CMD_SIZE +ALIGNMENT_UNIT)
 
+#ifdef PLATFORM_LINUX
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,12))
 #define rtw_usb_control_msg(dev, pipe, request, requesttype, value, index, data, size, timeout_ms) \
 	usb_control_msg((dev), (pipe), (request), (requesttype), (value), (index), (data), (size), (timeout_ms))
@@ -48,26 +53,40 @@ enum{
 		((timeout_ms) == 0) ||((timeout_ms)*HZ/1000>0)?((timeout_ms)*HZ/1000):1)
 #endif
 #include <usb_ops_linux.h>
+#endif //PLATFORM_LINUX
 
+#ifdef CONFIG_RTL8192C
+void rtl8192cu_set_intf_ops(struct _io_ops *pops);
+#define usb_set_intf_ops	rtl8192cu_set_intf_ops
+
+void rtl8192cu_recv_tasklet(void *priv);
+
+void rtl8192cu_xmit_tasklet(void *priv);
+#endif
+
+#ifdef CONFIG_RTL8192D
 void rtl8192du_set_intf_ops(struct _io_ops *pops);
 #define usb_set_intf_ops	rtl8192du_set_intf_ops
 
 void rtl8192du_recv_tasklet(void *priv);
 
 void rtl8192du_xmit_tasklet(void *priv);
+#endif
 
 /*
 * Increase and check if the continual_urb_error of this @param dvobjprive is larger than MAX_CONTINUAL_URB_ERR
-* @return true:
-* @return false:
+* @return _TRUE:
+* @return _FALSE:
 */
 static inline int rtw_inc_and_chk_continual_urb_error(struct dvobj_priv *dvobj)
 {
-	int ret = false;
+	int ret = _FALSE;
 	int value;
-	if ((value=ATOMIC_INC_RETURN(&dvobj->continual_urb_error)) > MAX_CONTINUAL_URB_ERR) {
-		DBG_8192D("[dvobj:%p][ERROR] continual_urb_error:%d > %d\n", dvobj, value, MAX_CONTINUAL_URB_ERR);
-		ret = true;
+	if( (value=ATOMIC_INC_RETURN(&dvobj->continual_urb_error)) > MAX_CONTINUAL_URB_ERR) {
+		DBG_871X("[dvobj:%p][ERROR] continual_urb_error:%d > %d\n", dvobj, value, MAX_CONTINUAL_URB_ERR);
+		ret = _TRUE;
+	} else {
+		//DBG_871X("[dvobj:%p] continual_urb_error:%d\n", dvobj, value);
 	}
 	return ret;
 }
@@ -80,4 +99,4 @@ static inline void rtw_reset_continual_urb_error(struct dvobj_priv *dvobj)
 	ATOMIC_SET(&dvobj->continual_urb_error, 0);
 }
 
-#endif /* __USB_OPS_H_ */
+#endif //__USB_OPS_H_

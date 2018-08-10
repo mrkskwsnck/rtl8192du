@@ -11,6 +11,10 @@
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
  *
  ******************************************************************************/
 #ifndef _RTW_EVENT_H_
@@ -18,6 +22,7 @@
 #include <drv_conf.h>
 #include <osdep_service.h>
 
+#ifndef CONFIG_RTL8711FW
 #include <wlan_bssdef.h>
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,26))
 #include <asm/semaphore.h>
@@ -25,6 +30,11 @@
 #include <linux/semaphore.h>
 #endif
 #include <linux/sem.h>
+#else
+#include <wlan_bssdef.h>
+#endif//CONFIG_RTL8711FW
+
+
 
 #ifdef CONFIG_H2CLBK
 #include <h2clbk.h>
@@ -35,7 +45,7 @@ Used to report a bss has been scanned
 
 */
 struct survey_event	{
-	struct wlan_bssid_ex bss;
+	WLAN_BSSID_EX bss;
 };
 
 /*
@@ -79,7 +89,8 @@ struct stassoc_event {
 
 struct stadel_event {
  unsigned char macaddr[6];
- unsigned char rsvd[2]; /* for reason */
+ unsigned char rsvd[2]; //for reason
+ unsigned char locally_generated;
  int mac_id;
 };
 
@@ -100,7 +111,7 @@ struct c2hlbk_event{
 	unsigned char	b1;
 	unsigned int	w1;
 };
-#endif/* CONFIG_H2CLBK */
+#endif//CONFIG_H2CLBK
 
 #define GEN_EVT_CODE(event)	event ## _EVT_
 
@@ -108,7 +119,7 @@ struct c2hlbk_event{
 
 struct fwevent {
 	u32	parmsize;
-	void (*event_callback)(struct rtw_adapter *dev, u8 *pbuf);
+	void (*event_callback)(_adapter *dev, u8 *pbuf);
 };
 
 
@@ -134,8 +145,8 @@ struct c2hevent_queue {
 struct network_queue {
 	volatile int	head;
 	volatile int	tail;
-	struct wlan_bssid_ex networks[NETWORK_QUEUE_SZ];
+	WLAN_BSSID_EX networks[NETWORK_QUEUE_SZ];
 };
 
 
-#endif /*  _WLANEVENT_H_ */
+#endif // _WLANEVENT_H_

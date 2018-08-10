@@ -11,6 +11,10 @@
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
+ * You should have received a copy of the GNU General Public License along with
+ * this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110, USA
+ *
  *
  ******************************************************************************/
 #ifndef __IEEE80211_EXT_H
@@ -34,7 +38,6 @@
 #define WPA_KEY_MGMT_NONE BIT(2)
 #define WPA_KEY_MGMT_IEEE8021X_NO_WPA BIT(3)
 #define WPA_KEY_MGMT_WPA_NONE BIT(4)
-
 
 #define WPA_CAPABILITY_PREAUTH BIT(0)
 #define WPA_CAPABILITY_MGMT_FRAME_PROTECTION BIT(6)
@@ -66,7 +69,7 @@ struct wme_ac_parameter {
 	/* byte 2 */
 	u8	eCWmin:4,
 		eCWmax:4;
-#elif defined(__BIG_ENDIAN)
+#else
 	/* byte 1 */
 	u8	reserved:1,
 		aci:2,
@@ -76,8 +79,6 @@ struct wme_ac_parameter {
 	/* byte 2 */
 	u8	eCWmax:4,
 		eCWmin:4;
-#else
-#error	"Please fix <endian.h>"
 #endif
 
 	/* bytes 3 & 4 */
@@ -119,6 +120,7 @@ struct wme_parameter_element {
 	} while (0)
 
 #define RSN_SELECTOR_PUT(a, val) WPA_PUT_BE32((u8 *) (a), (val))
+//#define RSN_SELECTOR_PUT(a, val) WPA_PUT_LE32((u8 *) (a), (val))
 
 
 
@@ -282,5 +284,7 @@ struct ieee80211_mgmt {
 
 /* mgmt header + 1 byte category code */
 #define IEEE80211_MIN_ACTION_SIZE FIELD_OFFSET(struct ieee80211_mgmt, u.action.u)
+
+
 
 #endif
