@@ -25,10 +25,6 @@
 #define RTL871X_MODULE_NAME "92DU"
 #define DRV_NAME "rtl8192du"
 
-#define CONFIG_USB_HCI	1
-
-#define CONFIG_RTL8192D	1
-
 #define PLATFORM_LINUX	1
 
 #ifdef CONFIG_IOCTL_CFG80211
@@ -160,7 +156,7 @@
 
 //#define CONFIG_DUALMAC_CONCURRENT	1 //for 92D dual mac concurrent ,DMSP DMDP SMSP switch
 
-#define CONFIG_CONCURRENT_MODE 1
+//#define CONFIG_CONCURRENT_MODE 1
 #ifdef CONFIG_CONCURRENT_MODE
 	#define CONFIG_TSF_RESET_OFFLOAD 1			// For 2 PORT TSF SYNC.
 	//#define CONFIG_HWPORT_SWAP				//Port0->Sec , Port1 -> Pri
@@ -268,8 +264,6 @@
 #define CONFIG_PROC_DEBUG 1
 
 //#define DBG_HAL_INIT_PROFILING
-
-#define DBG_MEMORY_LEAK	1
 
 //TX use 1 urb
 //#define CONFIG_SINGLE_XMIT_BUF

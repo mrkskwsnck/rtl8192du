@@ -24,13 +24,8 @@
 #include <drv_types.h>
 #include <rtw_byteorder.h>
 #include <rtw_efuse.h>
-
 #include <hal_intf.h>
-
-#ifdef CONFIG_USB_HCI
 #include <usb_hal.h>
-#endif
-
 #include <rtl8192d_hal.h>
 
 atomic_t GlobalMutexForGlobalAdapterList = ATOMIC_INIT(0);
@@ -44,19 +39,12 @@ BOOLEAN GlobalFirstConfigurationForNormalChip = _TRUE;
 #endif
 
 
-static BOOLEAN
-_IsFWDownloaded(
-	IN	PADAPTER			Adapter
-	)
+static BOOLEAN _IsFWDownloaded(PADAPTER Adapter)
 {
 	return ((rtw_read32(Adapter, REG_MCUFWDL) & MCUFWDL_RDY) ? _TRUE : _FALSE);
 }
 
-static VOID
-_FWDownloadEnable(
-	IN	PADAPTER		Adapter,
-	IN	BOOLEAN			enable
-	)
+static VOID _FWDownloadEnable(PADAPTER Adapter, BOOLEAN enable)
 {
 #if 0
 	u32	value32 = rtw_read32(Adapter, REG_MCUFWDL);
@@ -73,14 +61,11 @@ _FWDownloadEnable(
 #else
 	u8	tmp;
 
-	if(enable)
-	{
+	if(enable) {
 		#ifdef DBG_SHOW_MCUFWDL_BEFORE_51_ENABLE
-		{
-			u8 val;
-			if( (val=rtw_read8(Adapter, REG_MCUFWDL)))
-				DBG_871X("DBG_SHOW_MCUFWDL_BEFORE_51_ENABLE %s:%d REG_MCUFWDL:0x%02x\n", __FUNCTION__, __LINE__, val);
-		}
+		u8 val;
+		if( (val=rtw_read8(Adapter, REG_MCUFWDL)))
+			DBG_871X("DBG_SHOW_MCUFWDL_BEFORE_51_ENABLE %s:%d REG_MCUFWDL:0x%02x\n", __FUNCTION__, __LINE__, val);
 		#endif
 		// 8051 enable
 		tmp = rtw_read8(Adapter, REG_SYS_FUNC_EN+1);
@@ -106,13 +91,7 @@ _FWDownloadEnable(
 #endif
 }
 
-#ifdef CONFIG_USB_HCI
-static int
-_BlockWrite_92d(
-	IN		PADAPTER		Adapter,
-	IN		PVOID			buffer,
-	IN		u32				size
-	)
+static int _BlockWrite_92d(PADAPTER Adapter, PVOID buffer, u32 size)
 {
 	int ret = _SUCCESS;
 
@@ -176,76 +155,11 @@ _BlockWrite_92d(
 exit:
 	return ret;
 }
-#endif
-#ifndef CONFIG_USB_HCI
-static int
-_BlockWrite(
-	IN		PADAPTER		Adapter,
-	IN		PVOID			buffer,
-	IN		u32			size
-	)
-{
-	int ret = _SUCCESS;
 
-	u32			blockSize	= sizeof(u32);	// Use 4-byte write to download FW
-	u8*			bufferPtr	= (u8*)buffer;
-	u32*			pu4BytePtr	= (u32*)buffer;
-	u32			i, offset, blockCount, remainSize;
-#ifdef CONFIG_PCI_HCI
-	u8			remainFW[4] = {0, 0, 0, 0};
-	u8			*p = NULL;
-#endif
-	blockCount = size / blockSize;
-	remainSize = size % blockSize;
-
-	for(i = 0 ; i < blockCount ; i++){
-		offset = i * blockSize;
-		ret = rtw_write32(Adapter, (FW_8192D_START_ADDRESS + offset), cpu_to_le32(*(pu4BytePtr + i)));
-
-		if(ret == _FAIL)
-			goto exit;
-	}
-#ifdef CONFIG_PCI_HCI
-	p = (u8*)((u32*)(bufferPtr + blockCount * blockSize));
-	if (remainSize) {
-		switch (remainSize) {
-		case 0:
-			break;
-		case 3:
-			remainFW[2]=*(p+2);
-		case 2:
-			remainFW[1]=*(p+1);
-		case 1:
-			remainFW[0]=*(p);
-			ret = rtw_write32(Adapter, (FW_8192D_START_ADDRESS + blockCount * blockSize),
-				 le32_to_cpu(*(u32*)remainFW));
-		}
-		return ret;
-	}
-#endif
-	if(remainSize){
-		offset = blockCount * blockSize;
-		bufferPtr += offset;
-
-		for(i = 0 ; i < remainSize ; i++){
-			ret = rtw_write8(Adapter, (FW_8192D_START_ADDRESS + offset + i), *(bufferPtr + i));
-
-			if(ret == _FAIL)
-				goto exit;
-		}
-	}
-
-exit:
-	return ret;
-
-}
-#endif //CONFIG_USB_HCI
-static int
-_PageWrite(
-	IN		PADAPTER		Adapter,
-	IN		u32			page,
-	IN		PVOID			buffer,
-	IN		u32			size
+static int _PageWrite(PADAPTER		Adapter,
+	u32			page,
+	PVOID			buffer,
+	u32			size
 	)
 {
 	u8 value8;
@@ -253,55 +167,22 @@ _PageWrite(
 
 	value8 = (rtw_read8(Adapter, REG_MCUFWDL+2)& 0xF8 ) | u8Page ;
 	rtw_write8(Adapter, REG_MCUFWDL+2,value8);
-#ifdef CONFIG_USB_HCI
 	return _BlockWrite_92d(Adapter,buffer,size);
-#else
-	return _BlockWrite(Adapter,buffer,size);
-#endif
 }
-#ifdef CONFIG_PCI_HCI
-static VOID
-_FillDummy(
-	u8*		pFwBuf,
-	u32*	pFwLen
-	)
-{
-	u32	FwLen = *pFwLen;
-	u8	remain = (u8)(FwLen%4);
-	remain = (remain==0)?0:(4-remain);
 
-	while(remain>0)
-	{
-		pFwBuf[FwLen] = 0;
-		FwLen++;
-		remain--;
-	}
-
-	*pFwLen = FwLen;
-}
-#endif //CONFIG_PCI_HCI
-static int
-_WriteFW(
-	IN		PADAPTER		Adapter,
-	IN		PVOID			buffer,
-	IN		u32			size
+static int _WriteFW(PADAPTER		Adapter,
+	PVOID			buffer,
+	u32			size
 	)
 {
 	int ret = _SUCCESS;
-	// Since we need dynamic decide method of dwonload fw, so we call this function to get chip version.
+	// Since we need dynamic decide method of download fw, so we call this function to get chip version.
 	// We can remove _ReadChipVersion from ReadAdapterInfo8192C later.
 	u32	pageNums,remainSize ;
 	u32	page,offset;
 	u8*	bufferPtr = (u8*)buffer;
 
-#ifdef CONFIG_PCI_HCI
-	// 20100120 Joseph: Add for 88CE normal chip.
-	// Fill in zero to make firmware image to dword alignment.
-//	_FillDummy(bufferPtr, &size);
-#endif
-
 	pageNums = size / MAX_PAGE_SIZE ;
-	//RT_ASSERT((pageNums <= 4), ("Page numbers should not greater then 4 \n"));
 	remainSize = size % MAX_PAGE_SIZE;
 
 	for(page = 0; page < pageNums;  page++){
@@ -324,12 +205,8 @@ _WriteFW(
 exit:
 	return ret;
 }
-int _FWFreeToGo_92D(
-	IN		PADAPTER		Adapter
-	);
-int _FWFreeToGo_92D(
-	IN		PADAPTER		Adapter
-	)
+
+int _FWFreeToGo_92D(PADAPTER Adapter)
 {
 	u32			counter = 0;
 	u32			value32;
@@ -348,64 +225,52 @@ int _FWFreeToGo_92D(
 	value32 |= MCUFWDL_RDY;
 	rtw_write32(Adapter, REG_MCUFWDL, value32);
 	return _SUCCESS;
-
 }
 
-VOID
-rtl8192d_FirmwareSelfReset(
-	IN	PADAPTER		Adapter
-)
+VOID rtl8192d_FirmwareSelfReset(PADAPTER Adapter)
 {
-	//HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	u8	u1bTmp;
 	int	Delay = 300;
 
-	//if((pHalData->FirmwareVersion > 0x21) ||
-	//	(pHalData->FirmwareVersion == 0x21 &&
-	//	pHalData->FirmwareSubVersion >= 0x01))
-	{
-		rtw_write8(Adapter, REG_FSIMR, 0x00);
-		// 2010/08/25 MH Accordign to RD alfred's suggestion, we need to disable other
-		// HRCV INT to influence 8051 reset.
-		rtw_write8(Adapter, REG_FWIMR, 0x20);
-		// 2011/02/15 MH According to Alex's suggestion, close mask to prevent incorrect FW write operation.
-		rtw_write8(Adapter, REG_FTIMR, 0x00);
+	rtw_write8(Adapter, REG_FSIMR, 0x00);
+	// 2010/08/25 MH Accordign to RD alfred's suggestion, we need to disable other
+	// HRCV INT to influence 8051 reset.
+	rtw_write8(Adapter, REG_FWIMR, 0x20);
+	// 2011/02/15 MH According to Alex's suggestion, close mask to prevent incorrect FW write operation.
+	rtw_write8(Adapter, REG_FTIMR, 0x00);
 
-		//0x1cf=0x20. Inform 8051 to reset. 2009.12.25. tynli_test
-		rtw_write8(Adapter, REG_HMETFR+3, 0x20);
+	//0x1cf=0x20. Inform 8051 to reset. 2009.12.25. tynli_test
+	rtw_write8(Adapter, REG_HMETFR+3, 0x20);
 
+	u1bTmp = rtw_read8(Adapter, REG_SYS_FUNC_EN+1);
+	while(u1bTmp&BIT2) {
+		Delay--;
+		if (Delay == 0)
+			break;
+		mdelay(1);
 		u1bTmp = rtw_read8(Adapter, REG_SYS_FUNC_EN+1);
-		while(u1bTmp&BIT2)
-		{
-			Delay--;
-			//RT_TRACE(COMP_INIT, DBG_LOUD, ("PowerOffAdapter8192CE(): polling 0x03[2] Delay = %d \n", Delay));
-			if(Delay == 0)
-				break;
-			rtw_udelay_os(50);
-			u1bTmp = rtw_read8(Adapter, REG_SYS_FUNC_EN+1);
-		}
+	}
 
-		if((u1bTmp&BIT2) && (Delay == 0))
-		{
-			pr_info("FirmwareDownload92C(): Fail!!!!!! 0x03 = %x\n", u1bTmp);
-			rtw_write8(Adapter, REG_FWIMR, 0x00);
-			//debug reset fail
-			printk("FirmwareDownload92C(): Fail!!!!!! 0x1c = %x, 0x130=>%08x, 0x134=>%08x, 0x138=>%08x, 0x1c4=>%08x\n, 0x1cc=>%08x, , 0x80=>%08x , 0x1c0=>%08x  \n", rtw_read32(Adapter, 0x1c)
-			, rtw_read32(Adapter, 0x130), rtw_read32(Adapter, 0x134), rtw_read32(Adapter, 0x138), rtw_read32(Adapter, 0x1c4),
-			rtw_read32(Adapter, 0x1cc), rtw_read32(Adapter, 0x80), rtw_read32(Adapter, 0x1c0));
-		}
+	if((u1bTmp&BIT2) && (Delay == 0)) {
+//		pr_info("FirmwareDownload92C(): Fail!!!!!! 0x03 = %x\n", u1bTmp);
+		rtw_write8(Adapter, REG_FWIMR, 0x00);
+		//debug reset fail
+/*		printk("FirmwareDownload Fail: 0x1c = %x, 0x130=>%08x, 0x134=>%08x, 0x138=>%08x, 0x1c4=>%08x\n, 0x1cc=>%08x, , 0x80=>%08x , 0x1c0=>%08x  \n",
+		       rtw_read32(Adapter, 0x1c),
+		       rtw_read32(Adapter, 0x130),
+		       rtw_read32(Adapter, 0x134),
+		       rtw_read32(Adapter, 0x138),
+		       rtw_read32(Adapter, 0x1c4),
+		       rtw_read32(Adapter, 0x1cc),
+		       rtw_read32(Adapter, 0x80),
+		       rtw_read32(Adapter, 0x1c0)); */
 	}
 }
 
 //
 // description :polling fw ready
 //
-int _FWInit(
-	IN PADAPTER			  Adapter
-	);
-int _FWInit(
-	IN PADAPTER			  Adapter
-	)
+int _FWInit(PADAPTER Adapter)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	u32			counter = 0;
@@ -455,10 +320,7 @@ u8	FwBuffer8192D[FW_8192D_SIZE];
 //		Download 8192C firmware code.
 //
 //
-int FirmwareDownload92D(
-	IN	PADAPTER			Adapter,
-	IN	BOOLEAN			bUsedWoWLANFw
-)
+int FirmwareDownload92D(PADAPTER Adapter, BOOLEAN bUsedWoWLANFw)
 {
 	int	rtStatus = _SUCCESS;
 	u8 writeFW_retry = 0;
@@ -664,9 +526,9 @@ int FirmwareDownload92D(
 
 		rtStatus = _WriteFW(Adapter, pFirmwareBuf, FirmwareLen);
 
-		if(rtStatus == _SUCCESS || Adapter->bDriverStopped || Adapter->bSurpriseRemoved
-			||(writeFW_retry++ >= 3 && rtw_get_passing_time_ms(fwdl_start_time) > 500)
-		)
+		if (rtStatus == _SUCCESS || Adapter->bDriverStopped ||
+		    Adapter->bSurpriseRemoved || (writeFW_retry++ >= 3 &&
+		    rtw_get_passing_time_ms(fwdl_start_time) > 500))
 			break;
 	}
 	_FWDownloadEnable(Adapter, _FALSE);
@@ -677,7 +539,7 @@ int FirmwareDownload92D(
 	);
 
 	if(_SUCCESS != rtStatus){
-		DBG_871X("DL Firmware failed!\n");
+		pr_info("DL Firmware failed!\n");
 		goto Exit;
 	}
 
@@ -708,10 +570,7 @@ Exit:
 }
 
 #ifdef CONFIG_WOWLAN
-VOID
-InitializeFirmwareVars92D(
-	IN	PADAPTER		Adapter
-)
+VOID InitializeFirmwareVars92D(PADAPTER Adapter)
 {
 	HAL_DATA_TYPE		*pHalData	= GET_HAL_DATA(Adapter);
 	struct pwrctrl_priv *pwrpriv;
@@ -736,11 +595,7 @@ InitializeFirmwareVars92D(
 //
 // 2011.04.12 by tynli.
 //
-VOID
-SetFwRelatedForWoWLAN8192DU(
-	IN	PADAPTER			padapter,
-	IN	u8			bHostIsGoingtoSleep
-)
+VOID SetFwRelatedForWoWLAN8192DU(PADAPTER padapter, u8 bHostIsGoingtoSleep)
 {
 	int	status=_FAIL;
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
@@ -808,10 +663,7 @@ static u8 Hal_GetChnlGroupfromArray(u8 chnl)
 	return group;
 }
 
-VOID
-rtl8192d_ReadChipVersion(
-	IN PADAPTER			Adapter
-	)
+VOID rtl8192d_ReadChipVersion(PADAPTER Adapter)
 {
 	u32	value32;
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -845,12 +697,7 @@ rtl8192d_ReadChipVersion(
 //
 //-------------------------------------------------------------------------
 
-VOID
-rtl8192d_EfuseParseChnlPlan(
-	IN	PADAPTER	Adapter,
-	IN	u8*			hwinfo,
-	IN	BOOLEAN		AutoLoadFail
-	)
+VOID rtl8192d_EfuseParseChnlPlan(PADAPTER Adapter, u8 *hwinfo, BOOLEAN AutoLoadFail)
 {
 	Adapter->mlmepriv.ChannelPlan = hal_com_get_channel_plan(
 		Adapter
@@ -869,13 +716,8 @@ rtl8192d_EfuseParseChnlPlan(
 //
 //-------------------------------------------------------------------------
 
-static VOID
-hal_ReadPowerValueFromPROM92D(
-	IN	PADAPTER		Adapter,
-	IN	PTxPowerInfo	pwrInfo,
-	IN	u8*			PROMContent,
-	IN	BOOLEAN			AutoLoadFail
-	)
+static VOID hal_ReadPowerValueFromPROM92D(PADAPTER Adapter, PTxPowerInfo pwrInfo,
+					  u8 *PROMContent, BOOLEAN AutoLoadFail)
 {
 	u32	rfPath, eeAddr, group, offset1,offset2=0;
 	u8	i = 0;
@@ -1007,9 +849,9 @@ hal_ReadPowerValueFromPROM92D(
 
 VOID
 rtl8192d_ReadTxPowerInfo(
-	IN	PADAPTER		Adapter,
-	IN	u8*			PROMContent,
-	IN	BOOLEAN			AutoLoadFail
+	PADAPTER		Adapter,
+	u8*			PROMContent,
+	BOOLEAN			AutoLoadFail
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1206,7 +1048,7 @@ rtl8192d_ReadTxPowerInfo(
 //	Assumption:
 //
 VOID rtl8192d_ResetDualMacSwitchVariables(
-		IN PADAPTER			Adapter
+		PADAPTER			Adapter
 )
 {
 #ifdef CONFIG_DUALMAC_CONCURRENT
@@ -1392,9 +1234,9 @@ enum{
 
 static VOID
 rtl8192d_EfusePowerSwitch(
-	IN	PADAPTER	pAdapter,
-	IN	u8		bWrite,
-	IN	u8		PwrState)
+	PADAPTER	pAdapter,
+	u8		bWrite,
+	u8		PwrState)
 {
 	u8	tempval;
 	u16	tmpV16;
@@ -1446,7 +1288,7 @@ ReadEFuse_RTL8192D(
 	u16			_offset,
 	u16			_size_byte,
 	u8			*pbuf,
-	IN BOOLEAN	bPseudoTest
+	BOOLEAN	bPseudoTest
 	)
 {
 	u8	efuseTbl[EFUSE_MAP_LEN];
@@ -1615,7 +1457,7 @@ ReadEFuse_RTL8192D(
 
 static VOID
 hal_EfuseUpdateNormalChipVersion_92D(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1654,7 +1496,7 @@ hal_EfuseUpdateNormalChipVersion_92D(
 
 static BOOLEAN
 hal_EfuseMacMode_ISVS_92D(
-     IN     PADAPTER     Adapter
+     PADAPTER     Adapter
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1695,7 +1537,7 @@ rtl8192d_ReadEFuse(
 	u16			_offset,
 	u16			_size_byte,
 	u8			*pbuf,
-	IN BOOLEAN	bPseudoTest
+	BOOLEAN	bPseudoTest
 	)
 {
 	PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(Adapter);
@@ -1708,11 +1550,11 @@ rtl8192d_ReadEFuse(
 
 static VOID
 rtl8192d_EFUSE_GetEfuseDefinition(
-	IN		PADAPTER	pAdapter,
-	IN		u8		efuseType,
-	IN		u8		type,
-	OUT		PVOID		*pOut,
-	IN		BOOLEAN		bPseudoTest
+	PADAPTER	pAdapter,
+	u8		efuseType,
+	u8		type,
+	PVOID		*pOut,
+	BOOLEAN		bPseudoTest
 	)
 {
 	switch(type)
@@ -1771,9 +1613,9 @@ rtl8192d_EFUSE_GetEfuseDefinition(
 
 static u16
 rtl8192d_EfuseGetCurrentSize(
-	IN	PADAPTER	pAdapter,
-	IN	u8			efuseType,
-	IN	BOOLEAN		bPseudoTest)
+	PADAPTER	pAdapter,
+	u8			efuseType,
+	BOOLEAN		bPseudoTest)
 {
 	int	bContinual = _TRUE;
 
@@ -1823,10 +1665,10 @@ rtl8192d_EfuseGetCurrentSize(
 }
 
 static int
-rtl8192d_Efuse_PgPacketRead(	IN	PADAPTER	pAdapter,
-					IN	u8			offset,
-					IN	u8			*data,
-					IN	BOOLEAN		bPseudoTest)
+rtl8192d_Efuse_PgPacketRead(PADAPTER	pAdapter,
+					u8			offset,
+					u8			*data,
+					BOOLEAN		bPseudoTest)
 {
 	u8	ReadState = PG_STATE_HEADER;
 
@@ -1934,11 +1776,11 @@ rtl8192d_Efuse_PgPacketRead(	IN	PADAPTER	pAdapter,
 }
 
 static int
-rtl8192d_Efuse_PgPacketWrite(IN	PADAPTER	pAdapter,
-					IN	u8			offset,
-					IN	u8			word_en,
-					IN	u8			*data,
-					IN	BOOLEAN		bPseudoTest)
+rtl8192d_Efuse_PgPacketWrite(PADAPTER	pAdapter,
+				u8			offset,
+				u8			word_en,
+				u8			*data,
+				BOOLEAN		bPseudoTest)
 {
 	u8	WriteState = PG_STATE_HEADER;
 
@@ -2364,11 +2206,11 @@ rtl8192d_Efuse_PgPacketWrite(IN	PADAPTER	pAdapter,
 }
 
 static u8
-rtl8192d_Efuse_WordEnableDataWrite(	IN	PADAPTER	pAdapter,
-							IN	u16		efuse_addr,
-							IN	u8		word_en,
-							IN	u8		*data,
-							IN	BOOLEAN		bPseudoTest)
+rtl8192d_Efuse_WordEnableDataWrite(PADAPTER	pAdapter,
+				u16		efuse_addr,
+				u8		word_en,
+				u8		*data,
+				BOOLEAN		bPseudoTest)
 {
 	u16	tmpaddr = 0;
 	u16	start_addr = efuse_addr;

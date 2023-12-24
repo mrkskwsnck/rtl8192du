@@ -21,15 +21,7 @@
 
 #include <drv_types.h>
 
-#ifdef CONFIG_RTL8712
-#include <rtw_mp_phy_regdef.h>
-#endif
-#ifdef CONFIG_RTL8192C
-#include <rtl8192c_hal.h>
-#endif
-#ifdef CONFIG_RTL8192D
 #include <rtl8192d_hal.h>
-#endif
 
 #ifdef CONFIG_MP_INCLUDED
 
@@ -138,10 +130,10 @@ static void _init_mp_priv_(struct mp_priv *pmp_priv)
 	pmp_priv->network_macaddr[5] = 0x55;
 
 	pnetwork = &pmp_priv->mp_network.network;
-	_rtw_memcpy(pnetwork->MacAddress, pmp_priv->network_macaddr, ETH_ALEN);
+	memcpy(pnetwork->MacAddress, pmp_priv->network_macaddr, ETH_ALEN);
 
 	pnetwork->Ssid.SsidLength = 8;
-	_rtw_memcpy(pnetwork->Ssid.Ssid, "mp_871x", pnetwork->Ssid.SsidLength);
+	memcpy(pnetwork->Ssid.Ssid, "mp_871x", pnetwork->Ssid.SsidLength);
 }
 
 #ifdef PLATFORM_LINUX
@@ -155,7 +147,7 @@ static int init_mp_priv_by_os(struct mp_priv *pmp_priv)
 	_rtw_init_queue(&pmp_priv->free_mp_xmitqueue);
 
 	pmp_priv->pallocated_mp_xmitframe_buf = NULL;
-	pmp_priv->pallocated_mp_xmitframe_buf = rtw_zmalloc(NR_MP_XMITFRAME * sizeof(struct mp_xmit_frame) + 4);
+	pmp_priv->pallocated_mp_xmitframe_buf = kzalloc(NR_MP_XMITFRAME * sizeof(struct mp_xmit_frame) + 4, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
 	if (pmp_priv->pallocated_mp_xmitframe_buf == NULL) {
 		res = _FAIL;
 		goto _exit_init_mp_priv;
@@ -199,8 +191,8 @@ static void mp_init_xmit_attrib(struct mp_tx *pmptx, PADAPTER padapter)
 	_rtw_memset(desc, 0, TXDESC_SIZE);
 
 	pattrib->ether_type = 0x8712;
-	//_rtw_memcpy(pattrib->src, padapter->eeprompriv.mac_addr, ETH_ALEN);
-//	_rtw_memcpy(pattrib->ta, pattrib->src, ETH_ALEN);
+	//memcpy(pattrib->src, padapter->eeprompriv.mac_addr, ETH_ALEN);
+//	memcpy(pattrib->ta, pattrib->src, ETH_ALEN);
 	_rtw_memset(pattrib->dst, 0xFF, ETH_ALEN);
 //	pattrib->pctrl = 0;
 //	pattrib->dhcp_pkt = 0;
@@ -265,19 +257,10 @@ void free_mp_priv(struct mp_priv *pmp_priv)
 	pmp_priv->pmp_xmtframe_buf = NULL;
 }
 
-#ifdef CONFIG_RTL8192C
-#define PHY_IQCalibrate(a,b)	rtl8192c_PHY_IQCalibrate(a,b)
-#define PHY_LCCalibrate(a)	rtl8192c_PHY_LCCalibrate(a)
-#define dm_CheckTXPowerTracking(a)	rtl8192c_dm_CheckTXPowerTracking(a)
-#define PHY_SetRFPathSwitch(a,b)	rtl8192c_PHY_SetRFPathSwitch(a,b)
-#endif
-
-#ifdef CONFIG_RTL8192D
 #define PHY_IQCalibrate(a)	rtl8192d_PHY_IQCalibrate(a, _FALSE)
 #define PHY_LCCalibrate(a)	rtl8192d_PHY_LCCalibrate(a, _TRUE)
 #define dm_CheckTXPowerTracking(a)	rtl8192d_dm_CheckTXPowerTracking(a)
 #define PHY_SetRFPathSwitch(a,b)	rtl8192d_PHY_SetRFPathSwitch(a,b)
-#endif
 
 s32
 MPT_InitializeAdapter(
@@ -335,35 +318,10 @@ MPT_InitializeAdapter(
 	ledsetting = rtw_read32(pAdapter, REG_LEDCFG0);
 	rtw_write32(pAdapter, REG_LEDCFG0, ledsetting & ~LED0DIS);
 
-#ifdef CONFIG_RTL8192C
-	PHY_IQCalibrate(pAdapter, _FALSE);
-	dm_CheckTXPowerTracking(pAdapter);	//trigger thermal meter
-	PHY_LCCalibrate(pAdapter);
-#endif
-
-#ifdef CONFIG_RTL8192D
 	PHY_IQCalibrate(pAdapter);
 	dm_CheckTXPowerTracking(pAdapter);	//trigger thermal meter
 	PHY_LCCalibrate(pAdapter);
 	PHY_SetRFPathSwitch(pAdapter, 1/*pHalData->bDefaultAntenna*/);	//Wifi default use Main
-#endif
-
-#ifdef CONFIG_PCI_HCI
-	PHY_SetRFPathSwitch(pAdapter, 1/*pHalData->bDefaultAntenna*/);	//Wifi default use Main
-#else
-
-#ifdef CONFIG_RTL8192C
-#if 1
-	if (pHalData->BoardType == BOARD_MINICARD)
-		PHY_SetRFPathSwitch(pAdapter, 1/*pHalData->bDefaultAntenna*/); //default use Main
-#else
-	if(pAdapter->HalFunc.GetInterfaceSelectionHandler(pAdapter) == INTF_SEL2_MINICARD )
-		PHY_SetRFPathSwitch(Adapter, pAdapter->MgntInfo.bDefaultAntenna); //default use Main
-#endif
-
-#endif
-
-#endif
 
 	pMptCtx->backup0xc50 = (u1Byte)PHY_QueryBBReg(pAdapter, rOFDM0_XAAGCCore1, bMaskByte0);
 	pMptCtx->backup0xc58 = (u1Byte)PHY_QueryBBReg(pAdapter, rOFDM0_XBAGCCore1, bMaskByte0);
@@ -443,22 +401,16 @@ void GetPowerTracking(PADAPTER padapter, u8 *enable)
 
 static void disable_dm(PADAPTER padapter)
 {
-#ifndef CONFIG_RTL8723A
 	u8 v8;
-#endif
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
 	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
 
 
 	//3 1. disable firmware dynamic mechanism
 	// disable Power Training, Rate Adaptive
-#ifdef CONFIG_RTL8723A
-	SetBcnCtrlReg(padapter, 0, EN_BCN_FUNCTION);
-#else
 	v8 = rtw_read8(padapter, REG_BCN_CTRL);
 	v8 &= ~EN_BCN_FUNCTION;
 	rtw_write8(padapter, REG_BCN_CTRL, v8);
-#endif
 
 	//3 2. disable driver dynamic mechanism
 	// disable Dynamic Initial Gain
@@ -491,39 +443,37 @@ s32 mp_start_test(PADAPTER padapter)
 	disable_dm(padapter);
 
 	//3 0. update mp_priv
-#if  defined (CONFIG_RTL8192C)  ||  defined (CONFIG_RTL8192D)
 	if (padapter->registrypriv.rf_config == RF_819X_MAX_TYPE) {
 //		HAL_DATA_TYPE *phal = GET_HAL_DATA(padapter);
 //		switch (phal->rf_type) {
 		switch (GET_RF_TYPE(padapter)) {
-			case RF_1T1R:
-				pmppriv->antenna_tx = ANTENNA_A;
-				pmppriv->antenna_rx = ANTENNA_A;
-				break;
-			case RF_1T2R:
-			default:
-				pmppriv->antenna_tx = ANTENNA_A;
-				pmppriv->antenna_rx = ANTENNA_AB;
-				break;
-			case RF_2T2R:
-			case RF_2T2R_GREEN:
-				pmppriv->antenna_tx = ANTENNA_AB;
-				pmppriv->antenna_rx = ANTENNA_AB;
-				break;
-			case RF_2T4R:
-				pmppriv->antenna_tx = ANTENNA_AB;
-				pmppriv->antenna_rx = ANTENNA_ABCD;
-				break;
+		case RF_1T1R:
+			pmppriv->antenna_tx = ANTENNA_A;
+			pmppriv->antenna_rx = ANTENNA_A;
+			break;
+		case RF_1T2R:
+		default:
+			pmppriv->antenna_tx = ANTENNA_A;
+			pmppriv->antenna_rx = ANTENNA_AB;
+			break;
+		case RF_2T2R:
+		case RF_2T2R_GREEN:
+			pmppriv->antenna_tx = ANTENNA_AB;
+			pmppriv->antenna_rx = ANTENNA_AB;
+			break;
+		case RF_2T4R:
+			pmppriv->antenna_tx = ANTENNA_AB;
+			pmppriv->antenna_rx = ANTENNA_ABCD;
+			break;
 		}
 	}
-#endif
 	mpt_ProStartTest(padapter);
 
 	//3 1. initialize a new WLAN_BSSID_EX
 //	_rtw_memset(&bssid, 0, sizeof(WLAN_BSSID_EX));
-	_rtw_memcpy(bssid.MacAddress, pmppriv->network_macaddr, ETH_ALEN);
+	memcpy(bssid.MacAddress, pmppriv->network_macaddr, ETH_ALEN);
 	bssid.Ssid.SsidLength = strlen("mp_pseudo_adhoc");
-	_rtw_memcpy(bssid.Ssid.Ssid, (u8*)"mp_pseudo_adhoc", bssid.Ssid.SsidLength);
+	memcpy(bssid.Ssid.Ssid, (u8*)"mp_pseudo_adhoc", bssid.Ssid.SsidLength);
 	bssid.InfrastructureMode = Ndis802_11IBSS;
 	bssid.NetworkTypeInUse = Ndis802_11DS;
 	bssid.IELength = 0;
@@ -573,7 +523,7 @@ s32 mp_start_test(PADAPTER padapter)
 	//3 3. join psudo AdHoc
 	tgt_network->join_res = 1;
 	tgt_network->aid = psta->aid = 1;
-	_rtw_memcpy(&tgt_network->network, &bssid, length);
+	memcpy(&tgt_network->network, &bssid, length);
 
 	rtw_indicate_connect(padapter);
 	_clr_fwstate_(pmlmepriv, _FW_UNDER_LINKING);
@@ -582,27 +532,10 @@ end_of_mp_start_test:
 
 	_exit_critical_bh(&pmlmepriv->lock, &irqL);
 
-	if (res == _SUCCESS)
-	{
+	if (res == _SUCCESS) {
 		// set MSR to WIFI_FW_ADHOC_STATE
-#if  defined (CONFIG_RTL8192C)  ||  defined (CONFIG_RTL8192D)
 		val8 = rtw_read8(padapter, MSR) & 0xFC; // 0x0102
 		val8 |= WIFI_FW_ADHOC_STATE;
-		rtw_write8(padapter, MSR, val8); // Link in ad hoc network
-#endif
-
-#if  !defined (CONFIG_RTL8192C)  &&  !defined (CONFIG_RTL8192D)
-		rtw_write8(padapter, MSR, 1); // Link in ad hoc network
-		rtw_write8(padapter, RCR, 0); // RCR : disable all pkt, 0x10250048
-		rtw_write8(padapter, RCR+2, 0x57); // RCR disable Check BSSID, 0x1025004a
-
-		// disable RX filter map , mgt frames will put in RX FIFO 0
-		rtw_write16(padapter, RXFLTMAP0, 0x0); // 0x10250116
-
-		val8 = rtw_read8(padapter, EE_9346CR); // 0x1025000A
-		if (!(val8 & _9356SEL))//boot from EFUSE
-			efuse_change_max_size(padapter);
-#endif
 	}
 
 	return res;
@@ -646,7 +579,6 @@ end_of_mp_stop_test:
 }
 /*---------------------------hal\rtl8192c\MPT_Phy.c---------------------------*/
 #if 0
-//#ifdef CONFIG_USB_HCI
 static VOID mpt_AdjustRFRegByRateByChan92CU(PADAPTER pAdapter, u8 RateIdx, u8 Channel, u8 BandWidthID)
 {
 	u8		eRFPath;
@@ -793,27 +725,6 @@ void SetDataRate(PADAPTER pAdapter)
 	Hal_SetDataRate(pAdapter);
 }
 
-#if  !defined (CONFIG_RTL8192C)  &&  !defined (CONFIG_RTL8192D)
-/*------------------------------Define structure----------------------------*/
-typedef struct _R_ANTENNA_SELECT_OFDM {
-	u32	r_tx_antenna:4;
-	u32	r_ant_l:4;
-	u32	r_ant_non_ht:4;
-	u32	r_ant_ht1:4;
-	u32	r_ant_ht2:4;
-	u32	r_ant_ht_s1:4;
-	u32	r_ant_non_ht_s1:4;
-	u32	OFDM_TXSC:2;
-	u32	Reserved:2;
-}R_ANTENNA_SELECT_OFDM;
-
-typedef struct _R_ANTENNA_SELECT_CCK {
-	u8	r_cckrx_enable_2:2;
-	u8	r_cckrx_enable:2;
-	u8	r_ccktx_enable:4;
-}R_ANTENNA_SELECT_CCK;
-#endif
-
 s32 SetThermalMeter(PADAPTER pAdapter, u8 target_ther)
 {
 	return Hal_SetThermalMeter( pAdapter, target_ther);
@@ -928,8 +839,8 @@ static thread_return mp_xmit_packet_thread(thread_context context)
 			}
 		}
 
-		_rtw_memcpy((u8 *)(pxmitframe->buf_addr+TXDESC_OFFSET), pmptx->buf, pmptx->write_size);
-		_rtw_memcpy(&(pxmitframe->attrib), &(pmptx->attrib), sizeof(struct pkt_attrib));
+		memcpy((u8 *)(pxmitframe->buf_addr+TXDESC_OFFSET), pmptx->buf, pmptx->write_size);
+		memcpy(&(pxmitframe->attrib), &(pmptx->attrib), sizeof(struct pkt_attrib));
 
 		dump_mpframe(padapter, pxmitframe);
 
@@ -959,7 +870,7 @@ exit:
 void fill_txdesc_for_mp(PADAPTER padapter, struct tx_desc *ptxdesc)
 {
 	struct mp_priv *pmp_priv = &padapter->mppriv;
-	_rtw_memcpy(ptxdesc, &(pmp_priv->tx.desc), TXDESC_SIZE);
+	memcpy(ptxdesc, &(pmp_priv->tx.desc), TXDESC_SIZE);
 }
 
 void SetPacketTx(PADAPTER padapter)
@@ -982,9 +893,9 @@ void SetPacketTx(PADAPTER padapter)
 
 	//3 1. update_attrib()
 	pattrib = &pmp_priv->tx.attrib;
-	_rtw_memcpy(pattrib->src, padapter->eeprompriv.mac_addr, ETH_ALEN);
-	_rtw_memcpy(pattrib->ta, pattrib->src, ETH_ALEN);
-	_rtw_memcpy(pattrib->ra, pattrib->dst, ETH_ALEN);
+	memcpy(pattrib->src, padapter->eeprompriv.mac_addr, ETH_ALEN);
+	memcpy(pattrib->ta, pattrib->src, ETH_ALEN);
+	memcpy(pattrib->ra, pattrib->dst, ETH_ALEN);
 	bmcast = IS_MCAST(pattrib->ra);
 	if (bmcast) {
 		pattrib->mac_id = 1;
@@ -1003,7 +914,7 @@ void SetPacketTx(PADAPTER padapter)
 		rtw_mfree(pmp_priv->tx.pallocated_buf, pmp_priv->tx.buf_size);
 	pmp_priv->tx.write_size = pkt_size;
 	pmp_priv->tx.buf_size = pkt_size + XMITBUF_ALIGN_SZ;
-	pmp_priv->tx.pallocated_buf = rtw_zmalloc(pmp_priv->tx.buf_size);
+	pmp_priv->tx.pallocated_buf = kzalloc(pmp_priv->tx.buf_size, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
 	if (pmp_priv->tx.pallocated_buf == NULL) {
 		DBG_871X("%s: malloc(%d) fail!!\n", __func__, pmp_priv->tx.buf_size);
 		return;
@@ -1058,9 +969,9 @@ void SetPacketTx(PADAPTER padapter)
 	//3 4. make wlan header, make_wlanhdr()
 	hdr = (struct rtw_ieee80211_hdr *)pkt_start;
 	SetFrameSubType(&hdr->frame_ctl, pattrib->subtype);
-	_rtw_memcpy(hdr->addr1, pattrib->dst, ETH_ALEN); // DA
-	_rtw_memcpy(hdr->addr2, pattrib->src, ETH_ALEN); // SA
-	_rtw_memcpy(hdr->addr3, get_bssid(&padapter->mlmepriv), ETH_ALEN); // RA, BSSID
+	memcpy(hdr->addr1, pattrib->dst, ETH_ALEN); // DA
+	memcpy(hdr->addr2, pattrib->src, ETH_ALEN); // SA
+	memcpy(hdr->addr3, get_bssid(&padapter->mlmepriv), ETH_ALEN); // RA, BSSID
 
 	//3 5. make payload
 	ptr = pkt_start + pattrib->hdrlen;

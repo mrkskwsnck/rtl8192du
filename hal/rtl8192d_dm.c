@@ -70,7 +70,7 @@ extern atomic_t GlobalMutexForGlobalAdapterList;
  *
  *---------------------------------------------------------------------------*/
 static void dm_DIGInit(
-	IN	PADAPTER	pAdapter
+	PADAPTER	pAdapter
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -141,7 +141,7 @@ dm_DualMacGetParameterFromBuddyAdapter(
 
 static VOID
 odm_FalseAlarmCounterStatistics_ForSlaveOfDMSP(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 )
 {
 #ifdef CONFIG_DUALMAC_CONCURRENT
@@ -197,7 +197,7 @@ odm_FalseAlarmCounterStatistics_ForSlaveOfDMSP(
 
 static VOID
 odm_FalseAlarmCounterStatistics(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	u32	ret_value;
@@ -337,7 +337,7 @@ odm_FalseAlarmCounterStatistics(
 
 static VOID
 odm_FindMinimumRSSI_Dmsp(
-	IN	PADAPTER	pAdapter
+	PADAPTER	pAdapter
 )
 {
 #ifdef CONFIG_DUALMAC_CONCURRENT
@@ -383,7 +383,7 @@ odm_FindMinimumRSSI_Dmsp(
 
 static void
 odm_FindMinimumRSSI_92D(
-IN	PADAPTER	pAdapter
+PADAPTER	pAdapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -425,7 +425,7 @@ IN	PADAPTER	pAdapter
 
 static u8
 odm_initial_gain_MinPWDB(
-	IN	PADAPTER	pAdapter
+	PADAPTER	pAdapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -460,7 +460,7 @@ odm_initial_gain_MinPWDB(
 
 static VOID
 DM_Write_DIG_DMSP(
-	IN	PADAPTER	pAdapter
+	PADAPTER	pAdapter
 	)
 {
 #ifdef CONFIG_DUALMAC_CONCURRENT
@@ -533,7 +533,7 @@ DM_Write_DIG_DMSP(
 
 VOID
 DM_Write_DIG(
-	IN	PADAPTER	pAdapter
+	PADAPTER	pAdapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -579,7 +579,7 @@ DM_Write_DIG(
 }
 
 static void odm_DIG(
-	IN	PADAPTER	pAdapter)
+	PADAPTER	pAdapter)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
 	struct mlme_priv	*pmlmepriv = &(pAdapter->mlmepriv);
@@ -1002,7 +1002,7 @@ static void odm_DIG(
 
 static u8
 dm_initial_gain_MinPWDB(
-	IN	PADAPTER	pAdapter
+	PADAPTER	pAdapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -1030,7 +1030,7 @@ dm_initial_gain_MinPWDB(
 }
 
 static void dm_CCK_PacketDetectionThresh_DMSP(
-	IN	PADAPTER	pAdapter)
+	PADAPTER	pAdapter)
 {
 #ifdef CONFIG_DUALMAC_CONCURRENT
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -1182,7 +1182,7 @@ static void dm_CCK_PacketDetectionThresh_DMSP(
 }
 
 static void dm_CCK_PacketDetectionThresh(
-	IN	PADAPTER	pAdapter)
+	PADAPTER	pAdapter)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
 	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
@@ -1241,17 +1241,14 @@ static void dm_CCK_PacketDetectionThresh(
 }
 
 static void dm_1R_CCA(
-	IN	PADAPTER	pAdapter)
+	PADAPTER	pAdapter)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
 	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
 	pPS_T pDM_PSTable = &pdmpriv->DM_PSTable;
 	struct registry_priv *pregistrypriv = &pAdapter->registrypriv;
 
-#ifdef CONFIG_USB_HCI // Add by Gary for 92DU 1RCCA 5G->Enable, 2G->Disable 20110624
-      if(pHalData->CurrentBandType92D == BAND_ON_5G)
-      {
-#endif
+      if(pHalData->CurrentBandType92D == BAND_ON_5G) {
               //RT_TRACE(COMP_BB_POWERSAVING,DBG_LOUD,("=Gary=: 92D 5G 1RCCA on\n"));
 		if(pdmpriv->MinUndecoratedPWDBForDM != 0)
 		{
@@ -1313,14 +1310,12 @@ static void dm_1R_CCA(
 			pDM_PSTable->PreCCAState = pDM_PSTable->CurCCAState;
 		}
 		//RT_TRACE(	COMP_BB_POWERSAVING|COMP_INIT, DBG_LOUD, ("CCAStage = %d\n",pDM_PSTable->CurCCAState));
-#ifdef CONFIG_USB_HCI
 	}
 	//else  // pHalData->CurrentBandType92D == BAND_ON_2_4G  92DU 2.4G 1RCCA Disable
 	//	RT_TRACE(COMP_BB_POWERSAVING,DBG_LOUD,("=Gary=: 92D 2G 1RCCA off\n"));
-#endif
 }
 
-static void dm_InitDynamicTxPower(IN	PADAPTER	Adapter)
+static void dm_InitDynamicTxPower(PADAPTER	Adapter)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
@@ -1332,7 +1327,7 @@ static void dm_InitDynamicTxPower(IN	PADAPTER	Adapter)
 	pdmpriv->DynamicTxHighPowerLvl = TxHighPwrLevel_Normal;
 }
 
-static void odm_DynamicTxPower_92D(IN	PADAPTER	Adapter)
+static void odm_DynamicTxPower_92D(PADAPTER	Adapter)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	struct mlme_priv	*pmlmepriv = &(Adapter->mlmepriv);
@@ -1498,7 +1493,7 @@ static void odm_DynamicTxPower_92D(IN	PADAPTER	Adapter)
 
 
 static VOID PWDB_Monitor(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1612,7 +1607,7 @@ static VOID PWDB_Monitor(
 
 static void
 DM_InitEdcaTurbo(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1623,7 +1618,7 @@ DM_InitEdcaTurbo(
 
 static void
 dm_CheckEdcaTurbo(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	u32	trafficIndex;
@@ -1794,7 +1789,7 @@ dm_CheckEdcaTurbo_EXIT:
 }	// dm_CheckEdcaTurbo
 
 static void dm_InitDynamicBBPowerSaving(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1809,7 +1804,7 @@ static void dm_InitDynamicBBPowerSaving(
 
 static void
 dm_DynamicBBPowerSaving(
-IN	PADAPTER	pAdapter
+PADAPTER	pAdapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -1851,7 +1846,7 @@ IN	PADAPTER	pAdapter
 
 static	VOID
 dm_RXGainTrackingCallback_ThermalMeter_92D(
-	IN PADAPTER	Adapter)
+	PADAPTER	Adapter)
 {
 	u8			index_mapping[Rx_index_mapping_NUM] = {
 						0x0f,	0x0f,	0x0f,	0x0f,	0x0b,
@@ -1877,7 +1872,7 @@ dm_RXGainTrackingCallback_ThermalMeter_92D(
 //091212 chiyokolin
 static	VOID
 dm_TXPowerTrackingCallback_ThermalMeter_92D(
-            IN PADAPTER	Adapter)
+            PADAPTER	Adapter)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
@@ -2386,7 +2381,7 @@ dm_TXPowerTrackingCallback_ThermalMeter_92D(
 
 static	VOID
 dm_InitializeTXPowerTracking_ThermalMeter(
-	IN	PADAPTER		Adapter)
+	PADAPTER		Adapter)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
@@ -2406,7 +2401,7 @@ dm_InitializeTXPowerTracking_ThermalMeter(
 
 static VOID
 DM_InitializeTXPowerTracking(
-	IN	PADAPTER		Adapter)
+	PADAPTER		Adapter)
 {
 	//HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 
@@ -2429,14 +2424,14 @@ DM_InitializeTXPowerTracking(
 //
 static VOID
 DM_TXPowerTracking92CDirectCall(
-            IN	PADAPTER		Adapter)
+            PADAPTER		Adapter)
 {
 	dm_TXPowerTrackingCallback_ThermalMeter_92D(Adapter);
 }
 
 static VOID
 dm_CheckTXPowerTracking_ThermalMeter(
-	IN	PADAPTER		Adapter)
+	PADAPTER		Adapter)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
@@ -2473,7 +2468,7 @@ dm_CheckTXPowerTracking_ThermalMeter(
 
 VOID
 rtl8192d_dm_CheckTXPowerTracking(
-	IN	PADAPTER		Adapter)
+	PADAPTER		Adapter)
 {
 	//RT_TRACE(COMP_POWER_TRACKING, DBG_LOUD,("dm_CheckTXPowerTracking!!\n"));
 
@@ -2502,7 +2497,7 @@ rtl8192d_dm_CheckTXPowerTracking(
  *---------------------------------------------------------------------------*/
 static VOID
 dm_CheckRfCtrlGPIO(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 
@@ -2524,7 +2519,7 @@ dm_CheckRfCtrlGPIO(
  *	03/11/2008	hpfan	Create Version 0.
  *
  *---------------------------------------------------------------------------*/
-static void	dm_CheckPbcGPIO(IN PADAPTER padapter)
+static void	dm_CheckPbcGPIO(PADAPTER padapter)
 {
 	u8	tmp1byte;
 	u8	bPbcPressed = _FALSE;
@@ -2536,7 +2531,6 @@ static void	dm_CheckPbcGPIO(IN PADAPTER padapter)
 	do
 	{
 		i++;
-#ifdef CONFIG_USB_HCI
 	tmp1byte = rtw_read8(padapter, GPIO_IO_SEL);
 	tmp1byte |= (HAL_8192C_HW_GPIO_WPS_BIT);
 	rtw_write8(padapter, GPIO_IO_SEL, tmp1byte);	//enable GPIO[2] as output mode
@@ -2563,24 +2557,6 @@ static void	dm_CheckPbcGPIO(IN PADAPTER padapter)
 		if(i<=3)
 			rtw_msleep_os(50);
 	}
-#else
-	tmp1byte = rtw_read8(padapter, GPIO_IN);
-	//RT_TRACE(COMP_IO, DBG_TRACE, ("dm_CheckPbcGPIO - %x\n", tmp1byte));
-
-	if (tmp1byte == 0xff || padapter->init_adpt_in_progress)
-	{
-		bPbcPressed = _FALSE;
-		break ;
-	}
-
-	if((tmp1byte&HAL_8192C_HW_GPIO_WPS_BIT)==0)
-	{
-		bPbcPressed = _TRUE;
-
-		if(i<=3)
-			rtw_msleep_os(50);
-	}
-#endif
 	}while(i<=3 && bPbcPressed == _TRUE);
 
 	if( _TRUE == bPbcPressed)
@@ -2611,7 +2587,7 @@ static void	dm_CheckPbcGPIO(IN PADAPTER padapter)
 
 static VOID
 dm_InitRateAdaptiveMask(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -2645,7 +2621,7 @@ dm_InitRateAdaptiveMask(
  *
  *---------------------------------------------------------------------------*/
 static VOID
-dm_RefreshRateAdaptiveMask(	IN	PADAPTER	pAdapter)
+dm_RefreshRateAdaptiveMask(PADAPTER	pAdapter)
 {
 #if 0
 	PADAPTER				pTargetAdapter;
@@ -2806,7 +2782,7 @@ dm_RefreshRateAdaptiveMask(	IN	PADAPTER	pAdapter)
 }
 static VOID
 dm_CheckProtection(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 #if 0
@@ -2833,7 +2809,7 @@ dm_CheckProtection(
 
 static VOID
 dm_CheckStatistics(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 #if 0
@@ -2857,7 +2833,7 @@ dm_CheckStatistics(
 //
 static void
 dm_InitGPIOSetting(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	u8	tmp1byte;
@@ -2871,7 +2847,7 @@ dm_InitGPIOSetting(
 //============================================================
 // functions
 //============================================================
-void rtl8192d_init_dm_priv(IN PADAPTER Adapter)
+void rtl8192d_init_dm_priv(PADAPTER Adapter)
 {
 	//PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(Adapter);
 	//struct dm_priv	*pdmpriv = &pHalData->dmpriv;
@@ -2880,7 +2856,7 @@ void rtl8192d_init_dm_priv(IN PADAPTER Adapter)
 
 }
 
-void rtl8192d_deinit_dm_priv(IN PADAPTER Adapter)
+void rtl8192d_deinit_dm_priv(PADAPTER Adapter)
 {
 	//PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(Adapter);
 	//struct dm_priv	*pdmpriv = &pHalData->dmpriv;
@@ -2889,7 +2865,7 @@ void rtl8192d_deinit_dm_priv(IN PADAPTER Adapter)
 
 void
 rtl8192d_InitHalDm(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	PHAL_DATA_TYPE	pHalData = GET_HAL_DATA(Adapter);
@@ -3018,7 +2994,7 @@ static void FindMinimumRSSI(PADAPTER Adapter)
 
 VOID
 rtl8192d_HalDmWatchDog(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	BOOLEAN		bFwCurrentInPSMode = _FALSE;
@@ -3102,11 +3078,7 @@ rtl8192d_HalDmWatchDog(
 		// Dynamic Initial Gain mechanism.
 		//
 //sherry delete flag 20110517
-#ifdef CONFIG_PCI_HCI
-//		ACQUIRE_GLOBAL_SPINLOCK(&GlobalSpinlockForGlobalAdapterList);
-#else
 		ACQUIRE_GLOBAL_MUTEX(GlobalMutexForGlobalAdapterList);
-#endif
 		if(pHalData->bSlaveOfDMSP)
 		{
 			odm_FalseAlarmCounterStatistics_ForSlaveOfDMSP(Adapter);
@@ -3115,11 +3087,7 @@ rtl8192d_HalDmWatchDog(
 		{
 			odm_FalseAlarmCounterStatistics(Adapter);
 		}
-#ifdef CONFIG_PCI_HCI
-//		RELEASE_GLOBAL_SPINLOCK(&GlobalSpinlockForGlobalAdapterList);
-#else
 		RELEASE_GLOBAL_MUTEX(GlobalMutexForGlobalAdapterList);
-#endif
 		//odm_RSSIMonitorCheck(Adapter);
 #ifndef CONFIG_CONCURRENT_MODE
 		odm_FindMinimumRSSI_92D(Adapter);
@@ -3140,10 +3108,6 @@ rtl8192d_HalDmWatchDog(
 				dm_CCK_PacketDetectionThresh(Adapter);
 		}
 
-//#ifdef CONFIG_PCI_HCI
-//		odm_DynamicEarlyMode(Adapter);
-//#endif
-
 		//
 		// Dynamic Tx Power mechanism.
 		//
@@ -3162,17 +3126,6 @@ rtl8192d_HalDmWatchDog(
 		// Rate Adaptive by Rx Signal Strength mechanism.
 		//
 		dm_RefreshRateAdaptiveMask(Adapter);
-
-//#ifdef CONFIG_PCI_HCI
-		//BT-Coexist
-//		dm_BTCoexist(Adapter);
-//#endif
-
-#ifdef CONFIG_PCI_HCI
-		// Tx Migration settings.
-		//migration, 92d just for normal chip, vivi, 20100708
-		//dm_InterruptMigration(Adapter);
-#endif
 
 		// EDCA turbo
 		//update the EDCA paramter according to the Tx/RX mode

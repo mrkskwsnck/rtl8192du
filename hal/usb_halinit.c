@@ -28,12 +28,6 @@
 #include <rtl8192d_hal.h>
 #include <rtl8192d_led.h>
 
-#ifndef CONFIG_USB_HCI
-
-#error "CONFIG_USB_HCI shall be on!\n"
-
-#endif
-
 #include <usb_ops.h>
 #include <usb_hal.h>
 #include <usb_osintf.h>
@@ -70,7 +64,7 @@ extern BOOLEAN GlobalFirstConfigurationForNormalChip;
 
 static VOID
 _OneOutEpMapping(
-	IN	HAL_DATA_TYPE	*pHalData
+	HAL_DATA_TYPE	*pHalData
 	)
 {
 	//only endpoint number 0x02
@@ -89,8 +83,8 @@ _OneOutEpMapping(
 
 static VOID
 _TwoOutEpMapping(
-	IN	HAL_DATA_TYPE	*pHalData,
-	IN	BOOLEAN			bWIFICfg
+	HAL_DATA_TYPE	*pHalData,
+	BOOLEAN			bWIFICfg
 	)
 {
 
@@ -134,8 +128,8 @@ _TwoOutEpMapping(
 
 
 static VOID _ThreeOutEpMapping(
-	IN	HAL_DATA_TYPE	*pHalData,
-	IN	BOOLEAN			bWIFICfg
+	HAL_DATA_TYPE	*pHalData,
+	BOOLEAN			bWIFICfg
 	)
 {
 	if(bWIFICfg){//for WMM
@@ -177,8 +171,8 @@ static VOID _ThreeOutEpMapping(
 
 static BOOLEAN
 _MappingOutEP(
-	IN	PADAPTER	pAdapter,
-	IN	u8		NumOutPipe
+	PADAPTER	pAdapter,
+	u8		NumOutPipe
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -210,8 +204,8 @@ _MappingOutEP(
 
 static VOID
 _ConfigChipOutEP(
-	IN	PADAPTER	pAdapter,
-	IN	u8		NumOutPipe
+	PADAPTER	pAdapter,
+	u8		NumOutPipe
 	)
 {
 	u8			value8;
@@ -271,9 +265,9 @@ _ConfigChipOutEP(
 }
 
 static BOOLEAN HalUsbSetQueuePipeMapping8192DUsb(
-	IN	PADAPTER	pAdapter,
-	IN	u8		NumInPipe,
-	IN	u8		NumOutPipe
+	PADAPTER	pAdapter,
+	u8		NumInPipe,
+	u8		NumOutPipe
 	)
 {
 	HAL_DATA_TYPE	*pHalData	= GET_HAL_DATA(pAdapter);
@@ -669,9 +663,9 @@ void rtw_wowlan_reload_pattern(_adapter *padapter){
 //
 //-------------------------------------------------------------------------
 static u8 _LLTWrite(
-	IN  PADAPTER	Adapter,
-	IN	u32		address,
-	IN	u32		data
+	PADAPTER	Adapter,
+	u32		address,
+	u32		data
 	)
 {
 	u8	status = _SUCCESS;
@@ -700,8 +694,8 @@ static u8 _LLTWrite(
 }
 
 static u8 _LLTRead(
-	IN  PADAPTER	Adapter,
-	IN	u32		address
+	PADAPTER	Adapter,
+	u32		address
 	)
 {
 	int		count = 0;
@@ -728,8 +722,8 @@ static u8 _LLTRead(
 }
 
 static u8 InitLLTTable(
-	IN  PADAPTER	Adapter,
-	IN	u32		boundary
+	PADAPTER	Adapter,
+	u32		boundary
 	)
 {
 	u8		status = _SUCCESS;
@@ -791,7 +785,7 @@ static u8 InitLLTTable(
 //---------------------------------------------------------------
 static VOID
 _SetMacID(
-	IN  PADAPTER Adapter, u8* MacID
+	PADAPTER Adapter, u8* MacID
 	)
 {
 	u32 i;
@@ -807,7 +801,7 @@ _SetMacID(
 
 static VOID
 _SetBSSID(
-	IN  PADAPTER Adapter, u8* BSSID
+	PADAPTER Adapter, u8* BSSID
 	)
 {
 	u32 i;
@@ -824,7 +818,7 @@ _SetBSSID(
 // Shall USB interface init this?
 static VOID
 _InitInterrupt(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	u32	value32;
@@ -840,7 +834,7 @@ _InitInterrupt(
 
 static VOID
 _InitQueueReservedPage(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData	= GET_HAL_DATA(Adapter);
@@ -937,7 +931,7 @@ _InitQueueReservedPage(
 
 static VOID
 _InitTxBufferBoundary(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	struct registry_priv *pregistrypriv = &Adapter->registrypriv;
@@ -966,13 +960,13 @@ _InitTxBufferBoundary(
 
 static VOID
 _InitNormalChipRegPriority(
-	IN	PADAPTER	Adapter,
-	IN	u16		beQ,
-	IN	u16		bkQ,
-	IN	u16		viQ,
-	IN	u16		voQ,
-	IN	u16		mgtQ,
-	IN	u16		hiQ
+	PADAPTER	Adapter,
+	u16		beQ,
+	u16		bkQ,
+	u16		viQ,
+	u16		voQ,
+	u16		mgtQ,
+	u16		hiQ
 	)
 {
 	u16 value16		= (rtw_read16(Adapter, REG_TRXDMA_CTRL) & 0x7);
@@ -986,7 +980,7 @@ _InitNormalChipRegPriority(
 
 static VOID
 _InitNormalChipOneOutEpPriority(
-	IN	PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData	= GET_HAL_DATA(Adapter);
@@ -1021,7 +1015,7 @@ _InitNormalChipOneOutEpPriority(
 
 static VOID
 _InitNormalChipTwoOutEpPriority(
-	IN	PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData	= GET_HAL_DATA(Adapter);
@@ -1074,7 +1068,7 @@ _InitNormalChipTwoOutEpPriority(
 
 static VOID
 _InitNormalChipThreeOutEpPriority(
-	IN	PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	struct registry_priv *pregistrypriv = &Adapter->registrypriv;
@@ -1101,7 +1095,7 @@ _InitNormalChipThreeOutEpPriority(
 
 static VOID
 _InitQueuePriority(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData	= GET_HAL_DATA(Adapter);
@@ -1125,7 +1119,7 @@ _InitQueuePriority(
 
 static VOID
 _InitHardwareDropIncorrectBulkOut(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 #ifdef ENABLE_USB_DROP_INCORRECT_OUT
@@ -1139,7 +1133,7 @@ _InitHardwareDropIncorrectBulkOut(
 
 static VOID
 _InitNetworkType(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	u32	value32;
@@ -1158,7 +1152,7 @@ _InitNetworkType(
 
 static VOID
 _InitTransferPageSize(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	// Tx page size is always 128.
@@ -1170,8 +1164,8 @@ _InitTransferPageSize(
 
 static VOID
 _InitDriverInfoSize(
-	IN  PADAPTER	Adapter,
-	IN	u8		drvInfoSize
+	PADAPTER	Adapter,
+	u8		drvInfoSize
 	)
 {
 	rtw_write8(Adapter,REG_RX_DRVINFO_SZ, drvInfoSize);
@@ -1179,7 +1173,7 @@ _InitDriverInfoSize(
 
 static VOID
 _InitWMACSetting(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	//u4Byte			value32;
@@ -1217,7 +1211,7 @@ _InitWMACSetting(
 
 static VOID
 _InitAdaptiveCtrl(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	u16	value16;
@@ -1252,7 +1246,7 @@ _InitAdaptiveCtrl(
 
 static VOID
 _InitRateFallback(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	// Set Data Auto Rate Fallback Retry Count register.
@@ -1265,7 +1259,7 @@ _InitRateFallback(
 
 static VOID
 _InitEDCA(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	//PHAL_DATA_8192CUSB	pHalData = GetHalData8192CUsb(Adapter);
@@ -1322,7 +1316,7 @@ _InitEDCA(
 
 static VOID
 _InitAMPDUAggregation(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(Adapter);
@@ -1341,8 +1335,8 @@ _InitAMPDUAggregation(
 
 static VOID
 _InitBeaconMaxError(
-	IN  PADAPTER	Adapter,
-	IN	BOOLEAN		InfraMode
+	PADAPTER	Adapter,
+	BOOLEAN		InfraMode
 	)
 {
 #ifdef RTL8192CU_ADHOC_WORKAROUND_SETTING
@@ -1354,7 +1348,7 @@ _InitBeaconMaxError(
 
 static VOID
 _InitRDGSetting(
-	IN	PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	rtw_write8(Adapter,REG_RD_CTRL,0xFF);
@@ -1364,7 +1358,7 @@ _InitRDGSetting(
 
 static VOID
 _InitRetryFunction(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	u8	value8;
@@ -1380,7 +1374,7 @@ _InitRetryFunction(
 
 static VOID
 _InitUsbAggregationSetting(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 #ifdef CONFIG_USB_TX_AGGREGATION
@@ -1496,7 +1490,7 @@ _InitUsbAggregationSetting(
 
 static VOID
 _InitOperationMode(
-	IN	PADAPTER			Adapter
+	PADAPTER			Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1586,7 +1580,7 @@ _InitOperationMode(
 
 static VOID
 _InitSecuritySetting(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	invalidate_cam_all(Adapter);
@@ -1594,7 +1588,7 @@ _InitSecuritySetting(
 
  static VOID
 _InitBeaconParameters(
-	IN  PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 //	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1618,7 +1612,7 @@ _InitBeaconParameters(
 
 static VOID
 _InitRFType(
-	IN	PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1641,7 +1635,7 @@ _InitRFType(
 }
 
 #if RTL8192CU_ADHOC_WORKAROUND_SETTING
-static VOID _InitAdhocWorkaroundParams(IN PADAPTER Adapter)
+static VOID _InitAdhocWorkaroundParams(PADAPTER Adapter)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	pHalData->RegBcnCtrlVal = rtw_read8(Adapter, REG_BCN_CTRL);
@@ -1654,9 +1648,9 @@ static VOID _InitAdhocWorkaroundParams(IN PADAPTER Adapter)
 
 static VOID
 _BeaconFunctionEnable(
-	IN	PADAPTER		Adapter,
-	IN	BOOLEAN			Enable,
-	IN	BOOLEAN			Linked
+	PADAPTER		Adapter,
+	BOOLEAN			Enable,
+	BOOLEAN			Linked
 	)
 {
 	// 20100901 zhiyuan: Change original setting of BCN_CTRL(0x550) from
@@ -1671,7 +1665,7 @@ _BeaconFunctionEnable(
 
 // Set CCK and OFDM Block "ON"
 static VOID _BBTurnOnBlock(
-	IN	PADAPTER		Adapter
+	PADAPTER		Adapter
 	)
 {
 	HAL_DATA_TYPE		*pHalData	= GET_HAL_DATA(Adapter);
@@ -1686,7 +1680,7 @@ static VOID _BBTurnOnBlock(
 }
 
 static VOID _RfPowerSave(
-	IN	PADAPTER		Adapter
+	PADAPTER		Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData	= GET_HAL_DATA(Adapter);
@@ -2408,7 +2402,7 @@ _func_exit_;
 
 static VOID
 _DisableGPIO(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 /***************************************
@@ -2447,7 +2441,7 @@ n. LEDCFG 0x4C[15:0] = 0x8080
 } //end of _DisableGPIO()
 static VOID
 _ResetFWDownloadRegister(
-	IN PADAPTER			Adapter
+	PADAPTER			Adapter
 	)
 {
 	u32	value32;
@@ -2461,7 +2455,7 @@ _ResetFWDownloadRegister(
 
 static int
 _DisableRF_AFE(
-	IN PADAPTER			Adapter
+	PADAPTER			Adapter
 	)
 {
 	int		rtStatus = _SUCCESS;
@@ -2498,7 +2492,7 @@ _DisableRF_AFE(
 
 static VOID
 _ResetBB(
-	IN PADAPTER			Adapter
+	PADAPTER			Adapter
 	)
 {
 	u16	value16;
@@ -2513,7 +2507,7 @@ _ResetBB(
 
 static VOID
 _ResetMCU(
-	IN PADAPTER			Adapter
+	PADAPTER			Adapter
 	)
 {
 	u16	value16;
@@ -2527,7 +2521,7 @@ _ResetMCU(
 
 static VOID
 _DisableMAC_AFE_PLL(
-	IN PADAPTER			Adapter
+	PADAPTER			Adapter
 	)
 {
 	u32	value32;
@@ -2544,7 +2538,7 @@ _DisableMAC_AFE_PLL(
 
 static VOID
 _AutoPowerDownToHostOff(
-	IN	PADAPTER		Adapter
+	PADAPTER		Adapter
 	)
 {
 	u32			value32;
@@ -2565,7 +2559,7 @@ _AutoPowerDownToHostOff(
 
 static VOID
 _SetUsbSuspend(
-	IN PADAPTER			Adapter
+	PADAPTER			Adapter
 	)
 {
 	u32			value32;
@@ -2583,7 +2577,7 @@ _SetUsbSuspend(
 
 static VOID
 _DisableRFAFEAndResetBB8192D(
-	IN PADAPTER			Adapter
+	PADAPTER			Adapter
 	)
 {
 /**************************************
@@ -2629,7 +2623,7 @@ e.	SYS_FUNC_EN 0x02[7:0] = 0x14		//reset BB state machine
 
 static VOID
 _DisableRFAFEAndResetBB(
-	IN PADAPTER			Adapter
+	PADAPTER			Adapter
 	)
 {
 	_DisableRFAFEAndResetBB8192D(Adapter);
@@ -2637,8 +2631,8 @@ _DisableRFAFEAndResetBB(
 
 static VOID
 _ResetDigitalProcedure1(
-	IN	PADAPTER			Adapter,
-	IN	BOOLEAN				bWithoutHWSM
+	PADAPTER			Adapter,
+	BOOLEAN				bWithoutHWSM
 	)
 {
 
@@ -2765,7 +2759,7 @@ _ResetDigitalProcedure1(
 
 static VOID
 _ResetDigitalProcedure2(
-	IN	PADAPTER			Adapter
+	PADAPTER			Adapter
 )
 {
 /*****************************
@@ -2783,8 +2777,8 @@ m.	SYS_ISO_CTRL 0x01[7:0] = 0x83			// isolated ELDR to PON
 
 static VOID
 _DisableAnalog(
-	IN PADAPTER			Adapter,
-	IN BOOLEAN			bWithoutHWSM
+	PADAPTER			Adapter,
+	BOOLEAN			bWithoutHWSM
 	)
 {
 	u32 value16 = 0;
@@ -2822,7 +2816,7 @@ i.	APS_FSMCO 0x04[15:0] = 0x4802		// set USB suspend
 
 static BOOLEAN
 CanGotoPowerOff92D(
-	IN	PADAPTER			Adapter
+	PADAPTER			Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -2886,8 +2880,8 @@ CanGotoPowerOff92D(
 
 static int
 CardDisableHWSM( // HW Auto state machine
-	IN	PADAPTER		Adapter,
-	IN	BOOLEAN			resetMCU
+	PADAPTER		Adapter,
+	BOOLEAN			resetMCU
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -2938,7 +2932,7 @@ CardDisableHWSM( // HW Auto state machine
 
 static int
 CardDisableWithoutHWSM( // without HW Auto state machine
-	IN	PADAPTER		Adapter
+	PADAPTER		Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -3144,9 +3138,9 @@ unsigned int rtl8192du_inirp_deinit(_adapter * padapter)
 
 static void
 _ReadPROMVersion(
-	IN	PADAPTER	Adapter,
-	IN	u8*	PROMContent,
-	IN	BOOLEAN		AutoloadFail
+	PADAPTER	Adapter,
+	u8*	PROMContent,
+	BOOLEAN		AutoloadFail
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -3161,11 +3155,7 @@ _ReadPROMVersion(
 
 u32
 _GetChannelGroup(
-	IN	u32	channel
-	);
-u32
-_GetChannelGroup(
-	IN	u32	channel
+	u32	channel
 	)
 {
 	//RT_ASSERT((channel < 14), ("Channel %d no is supported!\n"));
@@ -3182,9 +3172,9 @@ _GetChannelGroup(
 
 static void
 _ReadIDs(
-	IN	PADAPTER	Adapter,
-	IN	u8*		PROMContent,
-	IN	BOOLEAN		AutoloadFail
+	PADAPTER	Adapter,
+	u8*		PROMContent,
+	BOOLEAN		AutoloadFail
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -3240,9 +3230,9 @@ _ReadIDs(
 
 static VOID
 _ReadMACAddress(
-	IN	PADAPTER	Adapter,
-	IN	u8*		PROMContent,
-	IN	BOOLEAN		AutoloadFail
+	PADAPTER	Adapter,
+	u8*		PROMContent,
+	BOOLEAN		AutoloadFail
 	)
 {
 	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(Adapter);
@@ -3253,11 +3243,11 @@ _ReadMACAddress(
 	if(AutoloadFail == _FALSE  ){
 		if(pHalData->interfaceIndex == 0){
 			//change to use memcpy, in order to avoid alignment issue. Baron 2011/6/20
-			_rtw_memcpy(&pEEPROM->mac_addr, &PROMContent[EEPROM_MAC_ADDR_MAC0_92D], ETH_ALEN);
+			memcpy(&pEEPROM->mac_addr, &PROMContent[EEPROM_MAC_ADDR_MAC0_92D], ETH_ALEN);
 		}
 		else{
 			//change to use memcpy, in order to avoid alignment issue. Baron 2011/6/20
-			_rtw_memcpy(&pEEPROM->mac_addr, &PROMContent[EEPROM_MAC_ADDR_MAC1_92D], ETH_ALEN);
+			memcpy(&pEEPROM->mac_addr, &PROMContent[EEPROM_MAC_ADDR_MAC1_92D], ETH_ALEN);
 		}
 
 		if(is_broadcast_mac_addr(pEEPROM->mac_addr) || is_multicast_mac_addr(pEEPROM->mac_addr))
@@ -3270,7 +3260,7 @@ _ReadMACAddress(
 				//sMacAddr[5] = (u8)(curtime & 0xff);
 				//sMacAddr[5] = (u8)GetRandomNumber(1, 254);
 			}
-			_rtw_memcpy(pEEPROM->mac_addr, sMacAddr, ETH_ALEN);
+			memcpy(pEEPROM->mac_addr, sMacAddr, ETH_ALEN);
 		}
 	}
 	else
@@ -3283,7 +3273,7 @@ _ReadMACAddress(
 			//sMacAddr[5] = (u8)(curtime & 0xff);
 			//sMacAddr[5] = (u8)GetRandomNumber(1, 254);
 		}
-		_rtw_memcpy(pEEPROM->mac_addr, sMacAddr, ETH_ALEN);
+		memcpy(pEEPROM->mac_addr, sMacAddr, ETH_ALEN);
 	}
 
 	//NicIFSetMacAddress(Adapter, Adapter->PermanentAddress);
@@ -3294,8 +3284,8 @@ _ReadMACAddress(
 
 static VOID
 hal_ReadMacPhyModeFromPROM92DU(
-	IN	PADAPTER	Adapter,
-	IN	u8*		PROMContent
+	PADAPTER	Adapter,
+	u8*		PROMContent
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -3337,9 +3327,9 @@ hal_ReadMacPhyModeFromPROM92DU(
 
 static VOID
 hal_ReadMacPhyMode_92D(
-	IN	PADAPTER	Adapter,
-	IN	u8			*PROMContent,
-	IN	BOOLEAN		AutoloadFail
+	PADAPTER	Adapter,
+	u8			*PROMContent,
+	BOOLEAN		AutoloadFail
 )
 {
 #ifdef CONFIG_DUALMAC_CONCURRENT
@@ -3389,9 +3379,9 @@ hal_ReadMacPhyMode_92D(
 
 static VOID
 _ReadBoardType(
-	IN	PADAPTER	Adapter,
-	IN	u8*		PROMContent,
-	IN	BOOLEAN		AutoloadFail
+	PADAPTER	Adapter,
+	u8*		PROMContent,
+	BOOLEAN		AutoloadFail
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -3417,9 +3407,9 @@ _ReadBoardType(
 
 static VOID
 _ReadLEDSetting(
-	IN	PADAPTER	Adapter,
-	IN	u8*		PROMContent,
-	IN	BOOLEAN		AutoloadFail
+	PADAPTER	Adapter,
+	u8*		PROMContent,
+	BOOLEAN		AutoloadFail
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -3447,9 +3437,9 @@ _ReadLEDSetting(
 #ifdef CONFIG_WOWLAN
 static VOID
 _ReadWOWLAN(
-	IN	PADAPTER	Adapter,
-	IN	u8*		PROMContent,
-	IN	BOOLEAN		AutoloadFail
+	PADAPTER	Adapter,
+	u8*		PROMContent,
+	BOOLEAN		AutoloadFail
 	)
 {
 	if(AutoloadFail)
@@ -3465,9 +3455,9 @@ _ReadWOWLAN(
 #endif //CONFIG_WOWLAN
 
 static void _InitAdapterVariablesByPROM(
-	IN	PADAPTER	Adapter,
-	IN	u8*		PROMContent,
-	IN	unsigned char AutoloadFail
+	PADAPTER	Adapter,
+	u8*		PROMContent,
+	unsigned char AutoloadFail
 	)
 {
 	_ReadPROMVersion(Adapter, PROMContent, AutoloadFail);
@@ -3484,7 +3474,7 @@ static void _InitAdapterVariablesByPROM(
 }
 
 static void _ReadPROMContent(
-	IN PADAPTER		Adapter
+	PADAPTER		Adapter
 	)
 {
 	EEPROM_EFUSE_PRIV	*pEEPROM = GET_EEPROM_EFUSE_PRIV(Adapter);
@@ -3523,7 +3513,7 @@ static void _ReadPROMContent(
 			ACQUIRE_GLOBAL_MUTEX(GlobalMutexForPowerAndEfuse);
 			EFUSE_ShadowMapUpdate(Adapter, EFUSE_WIFI, _FALSE);
 			RELEASE_GLOBAL_MUTEX(GlobalMutexForPowerAndEfuse);
-			_rtw_memcpy((void*)PROMContent, (void*)pEEPROM->efuse_eeprom_data, HWSET_MAX_SIZE);
+			memcpy((void*)PROMContent, (void*)pEEPROM->efuse_eeprom_data, HWSET_MAX_SIZE);
 		}
 
 		//Double check 0x8192 autoload status again
@@ -3537,7 +3527,7 @@ static void _ReadPROMContent(
 	else if ( pEEPROM->EepromOrEfuse == _FALSE)//auto load fail
 	{
 		_rtw_memset(pEEPROM->efuse_eeprom_data, 0xff, HWSET_MAX_SIZE);
-		_rtw_memcpy((void*)PROMContent, (void*)pEEPROM->efuse_eeprom_data, HWSET_MAX_SIZE);
+		memcpy((void*)PROMContent, (void*)pEEPROM->efuse_eeprom_data, HWSET_MAX_SIZE);
 	}
 
 
@@ -3548,7 +3538,7 @@ static void _ReadPROMContent(
 
 static VOID
 _InitOtherVariable(
-	IN PADAPTER		Adapter
+	PADAPTER		Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -3574,7 +3564,7 @@ _InitOtherVariable(
 
 static VOID
 _ReadRFType(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -3631,7 +3621,7 @@ static void rtl8192du_trigger_gpio_0(_adapter *padapter)
 
 static VOID
 StopTxBeacon(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	HAL_DATA_TYPE*	pHalData = GET_HAL_DATA(Adapter);
@@ -3650,7 +3640,7 @@ StopTxBeacon(
 
 static VOID
 ResumeTxBeacon(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	HAL_DATA_TYPE*	pHalData = GET_HAL_DATA(Adapter);
@@ -3670,11 +3660,7 @@ ResumeTxBeacon(
 //
 u8
 SelectRTSInitialRate(
-	IN	PADAPTER	Adapter
-);
-u8
-SelectRTSInitialRate(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 )
 {
 	struct sta_info		*psta;
@@ -3701,7 +3687,7 @@ SelectRTSInitialRate(
 	if(psta->rtsen || psta->cts2self)
 		bUseProtection = _TRUE;
 
-	_rtw_memcpy(SupportRateSet, cur_network->SupportedRates, NDIS_802_11_LENGTH_RATES_EX);
+	memcpy(SupportRateSet, cur_network->SupportedRates, NDIS_802_11_LENGTH_RATES_EX);
 
 	HalSetBrateCfg( Adapter, SupportRateSet, &BasicRateCfg );
 
@@ -3787,11 +3773,11 @@ SelectRTSInitialRate(
 //
 VOID
 SetRTSRateWorkItemCallback(
-	IN PVOID			pContext
+	PVOID			pContext
 );
 VOID
 SetRTSRateWorkItemCallback(
-	IN PVOID			pContext
+	PVOID			pContext
 )
 {
 	PADAPTER		Adapter =  (PADAPTER)pContext;
@@ -5404,9 +5390,9 @@ _func_exit_;
 //
 u8
 GetHalDefVar8192DUsb(
-	IN	PADAPTER				Adapter,
-	IN	HAL_DEF_VARIABLE		eVariable,
-	IN	PVOID					pValue
+	PADAPTER				Adapter,
+	HAL_DEF_VARIABLE		eVariable,
+	PVOID					pValue
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -5468,9 +5454,9 @@ GetHalDefVar8192DUsb(
 //
 u8
 SetHalDefVar8192DUsb(
-	IN	PADAPTER				Adapter,
-	IN	HAL_DEF_VARIABLE		eVariable,
-	IN	PVOID					pValue
+	PADAPTER				Adapter,
+	HAL_DEF_VARIABLE		eVariable,
+	PVOID					pValue
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);

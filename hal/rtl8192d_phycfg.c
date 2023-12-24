@@ -78,38 +78,38 @@ extern atomic_t GlobalCounterForMutex;
 /*---------------------Define local function prototype-----------------------*/
 static VOID
 phy_PathAFillIQKMatrix(
-	IN PADAPTER	pAdapter,
-	IN BOOLEAN	bIQKOK,
-	IN int		result[][8],
-	IN u8		final_candidate,
-	IN BOOLEAN	bTxOnly
+	PADAPTER	pAdapter,
+	BOOLEAN	bIQKOK,
+	int		result[][8],
+	u8		final_candidate,
+	BOOLEAN	bTxOnly
 	);
 
 static VOID
 phy_PathAFillIQKMatrix_5G_Normal(
-	IN PADAPTER	pAdapter,
-	IN BOOLEAN	bIQKOK,
-	IN int		result[][8],
-	IN u8		final_candidate,
-	IN BOOLEAN	bTxOnly
+	PADAPTER	pAdapter,
+	BOOLEAN	bIQKOK,
+	int		result[][8],
+	u8		final_candidate,
+	BOOLEAN	bTxOnly
 	);
 
 static VOID
 phy_PathBFillIQKMatrix(
-	IN PADAPTER	pAdapter,
-	IN BOOLEAN	bIQKOK,
-	IN int		result[][8],
-	IN u8		final_candidate,
-	IN BOOLEAN	bTxOnly
+	PADAPTER	pAdapter,
+	BOOLEAN	bIQKOK,
+	int		result[][8],
+	u8		final_candidate,
+	BOOLEAN	bTxOnly
 	);
 
 static VOID
 phy_PathBFillIQKMatrix_5G_Normal(
-	IN PADAPTER	pAdapter,
-	IN BOOLEAN	bIQKOK,
-	IN int		result[][8],
-	IN u8		final_candidate,
-	IN BOOLEAN	bTxOnly
+	PADAPTER	pAdapter,
+	BOOLEAN	bIQKOK,
+	int		result[][8],
+	u8		final_candidate,
+	BOOLEAN	bTxOnly
 	);
 /*----------------------------Function Body----------------------------------*/
 
@@ -196,10 +196,10 @@ phy_CalculateBitShift(
 //
 VOID
 rtl8192d_PHY_SetBBReg1Byte(
-	IN	PADAPTER	Adapter,
-	IN	u32		RegAddr,
-	IN	u32		BitMask,
-	IN	u32		Data
+	PADAPTER	Adapter,
+	u32		RegAddr,
+	u32		BitMask,
+	u32		Data
 	)
 {
 	u32			OriginalValue, BitShift,offset = 0;
@@ -238,14 +238,11 @@ rtl8192d_PHY_SetBBReg1Byte(
 */
 u32
 rtl8192d_PHY_QueryBBReg(
-	IN	PADAPTER	Adapter,
-	IN	u32		RegAddr,
-	IN	u32		BitMask
+	PADAPTER	Adapter,
+	u32		RegAddr,
+	u32		BitMask
 	)
 {
-	#ifdef CONFIG_PCI_HCI
-	u8	DBIdirect = 0;
-	#endif //CONFIG_PCI_HCI
 	u32	ReturnValue = 0, OriginalValue, BitShift;
 
 
@@ -255,19 +252,7 @@ rtl8192d_PHY_QueryBBReg(
 
 	//RT_TRACE(COMP_RF, DBG_TRACE, ("--->PHY_QueryBBReg(): RegAddr(%#lx), BitMask(%#lx)\n", RegAddr, BitMask));
 
-#ifdef CONFIG_PCI_HCI
-	if(RegAddr&MAC1_ACCESS_PHY0) //MAC1 use PHY0 wirte radio_A.
-		DBIdirect = BIT3;
-	else if(RegAddr&MAC0_ACCESS_PHY1) //MAC0 use PHY1 wirte radio_B.
-		DBIdirect = BIT3|BIT2;
-
-	if (DBIdirect)
-		OriginalValue = MpReadPCIDwordDBI8192D(Adapter, (u16)RegAddr&0xFFF, DBIdirect);
-	else
-#endif
-	{
-		OriginalValue = rtw_read32(Adapter, RegAddr);
-	}
+	OriginalValue = rtw_read32(Adapter, RegAddr);
 	BitShift = phy_CalculateBitShift(BitMask);
 	ReturnValue = (OriginalValue & BitMask) >> BitShift;
 
@@ -299,65 +284,32 @@ rtl8192d_PHY_QueryBBReg(
 
 VOID
 rtl8192d_PHY_SetBBReg(
-	IN	PADAPTER	Adapter,
-	IN	u32		RegAddr,
-	IN	u32		BitMask,
-	IN	u32		Data
+	PADAPTER	Adapter,
+	u32		RegAddr,
+	u32		BitMask,
+	u32		Data
 	)
 {
-#ifdef CONFIG_PCI_HCI
-	u8	DBIdirect=0;
-#endif //CONFIG_PCI_HCI
 	u32	OriginalValue, BitShift;
 
 #if (DISABLE_BB_RF == 1)
 	return;
 #endif
 
-#ifdef CONFIG_PCI_HCI
-	if(RegAddr&MAC1_ACCESS_PHY0) //MAC1 use PHY0 wirte radio_A.
-		DBIdirect = BIT3;
-	else if(RegAddr&MAC0_ACCESS_PHY1) //MAC0 use PHY1 wirte radio_B.
-		DBIdirect = BIT3|BIT2;
-#endif
-
 	//RT_TRACE(COMP_RF, DBG_TRACE, ("--->PHY_SetBBReg(): RegAddr(%#lx), BitMask(%#lx), Data(%#lx)\n", RegAddr, BitMask, Data));
 
 	if(BitMask!= bMaskDWord)
 	{//if not "double word" write
-#ifdef CONFIG_PCI_HCI
-		if (DBIdirect)
-		{
-			OriginalValue = MpReadPCIDwordDBI8192D(Adapter, (u16)RegAddr&0xFFF, DBIdirect);
-		}
-		else
-#endif
-		{
-			OriginalValue = rtw_read32(Adapter, RegAddr);
-		}
+		OriginalValue = rtw_read32(Adapter, RegAddr);
 		BitShift = phy_CalculateBitShift(BitMask);
 		Data = ((OriginalValue & (~BitMask)) | ((Data << BitShift) & BitMask));
 	}
 
-#ifdef CONFIG_PCI_HCI
-	if (DBIdirect)
-	{
-		MpWritePCIDwordDBI8192D(Adapter,
-					(u16)RegAddr&0xFFF,
-					Data,
-					DBIdirect);
-	}
-	else
-#endif
-	{
-		rtw_write32(Adapter, RegAddr, Data);
-	}
+	rtw_write32(Adapter, RegAddr, Data);
 
 	//RTPRINT(FPHY, PHY_BBW, ("BBW MASK=0x%lx Addr[0x%lx]=0x%lx\n", BitMask, RegAddr, Data));
 	//RT_TRACE(COMP_RF, DBG_TRACE, ("<---PHY_SetBBReg(): RegAddr(%#lx), BitMask(%#lx), Data(%#lx)\n", RegAddr, BitMask, Data));
-
 }
-
 
 //
 // 2. RF register R/W API
@@ -380,9 +332,9 @@ rtl8192d_PHY_SetBBReg(
  *---------------------------------------------------------------------------*/
 static	u32
 phy_FwRFSerialRead(
-	IN	PADAPTER			Adapter,
-	IN	RF_RADIO_PATH_E	eRFPath,
-	IN	u32				Offset	)
+	PADAPTER			Adapter,
+	RF_RADIO_PATH_E	eRFPath,
+	u32				Offset	)
 {
 	u32		retValue = 0;
 	//RT_ASSERT(FALSE,("deprecate!\n"));
@@ -409,10 +361,10 @@ phy_FwRFSerialRead(
  *---------------------------------------------------------------------------*/
 static	VOID
 phy_FwRFSerialWrite(
-	IN	PADAPTER			Adapter,
-	IN	RF_RADIO_PATH_E	eRFPath,
-	IN	u32				Offset,
-	IN	u32				Data	)
+	PADAPTER			Adapter,
+	RF_RADIO_PATH_E	eRFPath,
+	u32				Offset,
+	u32				Data	)
 {
 	//RT_ASSERT(FALSE,("deprecate!\n"));
 }
@@ -438,9 +390,9 @@ phy_FwRFSerialWrite(
 */
 static	u32
 phy_RFSerialRead(
-	IN	PADAPTER			Adapter,
-	IN	RF_RADIO_PATH_E	eRFPath,
-	IN	u32				Offset
+	PADAPTER			Adapter,
+	RF_RADIO_PATH_E	eRFPath,
+	u32				Offset
 	)
 {
 	u32	retValue = 0;
@@ -563,10 +515,10 @@ phy_RFSerialRead(
 */
 static	VOID
 phy_RFSerialWrite(
-	IN	PADAPTER			Adapter,
-	IN	RF_RADIO_PATH_E	eRFPath,
-	IN	u32				Offset,
-	IN	u32				Data
+	PADAPTER			Adapter,
+	RF_RADIO_PATH_E	eRFPath,
+	u32				Offset,
+	u32				Data
 	)
 {
 	u32	DataAndAddr = 0;
@@ -635,10 +587,10 @@ phy_RFSerialWrite(
 */
 u32
 rtl8192d_PHY_QueryRFReg(
-	IN	PADAPTER			Adapter,
-	IN	RF_RADIO_PATH_E	eRFPath,
-	IN	u32				RegAddr,
-	IN	u32				BitMask
+	PADAPTER			Adapter,
+	RF_RADIO_PATH_E	eRFPath,
+	u32				RegAddr,
+	u32				BitMask
 	)
 {
 	u32 Original_Value, Readback_Value, BitShift;
@@ -654,32 +606,14 @@ rtl8192d_PHY_QueryRFReg(
 
 	//RT_TRACE(COMP_RF, DBG_TRACE, ("--->PHY_QueryRFReg(): RegAddr(%#lx), eRFPath(%#x), BitMask(%#lx)\n", RegAddr, eRFPath,BitMask));
 
-#ifdef CONFIG_USB_HCI
 	//PlatformAcquireMutex(&pHalData->mxRFOperate);
-#else
-	//PlatformAcquireSpinLock(Adapter, RT_RF_OPERATE_SPINLOCK);
-#endif
-
-#ifdef CONFIG_USB_HCI
 	if(pHalData->bReadRFbyFW)
-	{
 		Original_Value = rtw_read32(Adapter,(0x66<<24|eRFPath<<16)|RegAddr ); //0x66 Just a identifier.by wl
-	}
 	else
-#endif
-	{
 		Original_Value = phy_RFSerialRead(Adapter, eRFPath, RegAddr);
-	}
 
 	BitShift =  phy_CalculateBitShift(BitMask);
 	Readback_Value = (Original_Value & BitMask) >> BitShift;
-
-#ifdef CONFIG_USB_HCI
-	//PlatformReleaseMutex(&pHalData->mxRFOperate);
-#else
-	//PlatformReleaseSpinLock(Adapter, RT_RF_OPERATE_SPINLOCK);
-#endif
-
 
 	//RTPRINT(FPHY, PHY_RFR, ("RFR-%d MASK=0x%lx Addr[0x%lx]=0x%lx\n", eRFPath, BitMask, RegAddr, Original_Value));//BitMask(%#lx),BitMask,
 	//RT_TRACE(COMP_RF, DBG_TRACE, ("<---PHY_QueryRFReg(): RegAddr(%#lx), eRFPath(%#x),  Original_Value(%#lx)\n",
@@ -708,11 +642,11 @@ rtl8192d_PHY_QueryRFReg(
 */
 VOID
 rtl8192d_PHY_SetRFReg(
-	IN	PADAPTER			Adapter,
-	IN	RF_RADIO_PATH_E	eRFPath,
-	IN	u32				RegAddr,
-	IN	u32				BitMask,
-	IN	u32				Data
+	PADAPTER			Adapter,
+	RF_RADIO_PATH_E	eRFPath,
+	u32				RegAddr,
+	u32				BitMask,
+	u32				Data
 	)
 {
 
@@ -735,14 +669,6 @@ rtl8192d_PHY_SetRFReg(
 	//RTPRINT(FINIT, INIT_RF, ("PHY_SetRFReg(): RegAddr(%#lx), BitMask(%#lx), Data(%#lx), eRFPath(%#x)\n",
 	//	RegAddr, BitMask, Data, eRFPath));
 
-
-#ifdef CONFIG_USB_HCI
-	//PlatformAcquireMutex(&pHalData->mxRFOperate);
-#else
-	//PlatformAcquireSpinLock(Adapter, RT_RF_OPERATE_SPINLOCK);
-#endif
-
-
 	// RF data is 12 bits only
 	if (BitMask != bRFRegOffsetMask)
 	{
@@ -752,19 +678,6 @@ rtl8192d_PHY_SetRFReg(
 	}
 
 	phy_RFSerialWrite(Adapter, eRFPath, RegAddr, Data);
-
-
-
-#ifdef CONFIG_USB_HCI
-	//PlatformReleaseMutex(&pHalData->mxRFOperate);
-#else
-	//PlatformReleaseSpinLock(Adapter, RT_RF_OPERATE_SPINLOCK);
-#endif
-
-	//PHY_QueryRFReg(Adapter,eRFPath,RegAddr,BitMask);
-	//RT_TRACE(COMP_RF, DBG_TRACE, ("<---PHY_SetRFReg(): RegAddr(%#lx), BitMask(%#lx), Data(%#lx), eRFPath(%#x)\n",
-	//		RegAddr, BitMask, Data, eRFPath));
-
 }
 
 
@@ -791,8 +704,8 @@ rtl8192d_PHY_SetRFReg(
 #ifndef CONFIG_EMBEDDED_FWIMG
 static	int
 phy_ConfigMACWithParaFile(
-	IN	PADAPTER		Adapter,
-	IN	u8*			pFileName
+	PADAPTER		Adapter,
+	u8*			pFileName
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -820,7 +733,7 @@ phy_ConfigMACWithParaFile(
  *---------------------------------------------------------------------------*/
 static	int
 phy_ConfigMACWithHeaderFile(
-	IN	PADAPTER		Adapter
+	PADAPTER		Adapter
 )
 {
 	u32					i = 0;
@@ -861,7 +774,7 @@ phy_ConfigMACWithHeaderFile(
  *---------------------------------------------------------------------------*/
 extern	int
 PHY_MACConfig8192D(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -918,7 +831,7 @@ PHY_MACConfig8192D(
 */
 static	VOID
 phy_InitBBRFRegisterDefinition(
-	IN	PADAPTER		Adapter
+	PADAPTER		Adapter
 )
 {
 	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(Adapter);
@@ -1040,8 +953,8 @@ phy_InitBBRFRegisterDefinition(
  *---------------------------------------------------------------------------*/
 static	int
 phy_ConfigBBWithHeaderFile(
-	IN	PADAPTER		Adapter,
-	IN	u8			ConfigType
+	PADAPTER		Adapter,
+	u8			ConfigType
 )
 {
 	int i;
@@ -1181,8 +1094,8 @@ phy_ConfigBBWithHeaderFile(
 #ifndef CONFIG_EMBEDDED_FWIMG
 static	int
 phy_ConfigBBWithParaFile(
-	IN	PADAPTER		Adapter,
-	IN	u8*			pFileName
+	PADAPTER		Adapter,
+	u8*			pFileName
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1195,10 +1108,10 @@ phy_ConfigBBWithParaFile(
 #if MP_DRIVER != 1
 static VOID
 storePwrIndexDiffRateOffset(
-	IN	PADAPTER	Adapter,
-	IN	u32		RegAddr,
-	IN	u32		BitMask,
-	IN	u32		Data
+	PADAPTER	Adapter,
+	u32		RegAddr,
+	u32		BitMask,
+	u32		Data
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1320,8 +1233,8 @@ storePwrIndexDiffRateOffset(
  *---------------------------------------------------------------------------*/
 static	int
 phy_ConfigBBWithPgHeaderFile(
-	IN	PADAPTER		Adapter,
-	IN	u8			ConfigType)
+	PADAPTER		Adapter,
+	u8			ConfigType)
 {
 	int i;
 	u32*	Rtl819XPHY_REGArray_Table_PG;
@@ -1389,8 +1302,8 @@ phy_ConfigBBWithPgHeaderFile(
 #ifndef CONFIG_EMBEDDED_FWIMG
 static	int
 phy_ConfigBBWithPgParaFile(
-	IN	PADAPTER		Adapter,
-	IN	u8*			pFileName)
+	PADAPTER		Adapter,
+	u8*			pFileName)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 
@@ -1421,8 +1334,8 @@ phy_ConfigBBWithPgParaFile(
  *---------------------------------------------------------------------------*/
 static	int
 phy_ConfigBBWithMpParaFile(
-	IN	PADAPTER	Adapter,
-	IN	s8			*pFileName
+	PADAPTER	Adapter,
+	s8			*pFileName
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1449,8 +1362,8 @@ phy_ConfigBBWithMpParaFile(
  *---------------------------------------------------------------------------*/
 static	int
 phy_ConfigBBWithMpHeaderFile(
-	IN	PADAPTER		Adapter,
-	IN	u1Byte			ConfigType)
+	PADAPTER		Adapter,
+	u1Byte			ConfigType)
 {
 	int	i;
 	u32	*Rtl8192CPHY_REGArray_Table_MP;
@@ -1502,7 +1415,7 @@ phy_ConfigBBWithMpHeaderFile(
 
 static	int
 phy_BB8192D_Config_ParaFile(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 #if MP_DRIVER != 1
@@ -1631,7 +1544,7 @@ phy_BB8190_Config_ParaFile_Fail:
 
 int
 PHY_BBConfig8192D(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	int	rtStatus = _SUCCESS;
@@ -1658,29 +1571,14 @@ PHY_BBConfig8192D(
 	value=rtw_read8(Adapter, REG_RF_CTRL);     //  0x1f bit7 bit6 represent for mac0/mac1 driver ready
 	rtw_write8(Adapter, REG_RF_CTRL, value|RF_EN|RF_RSTB|RF_SDMRSTB);
 
-#ifdef CONFIG_USB_HCI
 	rtw_write8(Adapter, REG_SYS_FUNC_EN, FEN_USBA | FEN_USBD | FEN_BB_GLB_RSTn | FEN_BBRSTB);
-#else
-	rtw_write8(Adapter, REG_SYS_FUNC_EN, FEN_PPLL|FEN_PCIEA|FEN_DIO_PCIE|FEN_BB_GLB_RSTn|FEN_BBRSTB);
-#endif
 	//undo clock gated
 	rtw_write32(Adapter, rFPGA0_XCD_RFParameter, rtw_read32(Adapter, rFPGA0_XCD_RFParameter)&(~BIT31));
-#ifdef CONFIG_USB_HCI
 	//To Fix MAC loopback mode fail. Suggested by SD4 Johnny. 2010.03.23.
 	rtw_write8(Adapter, REG_LDOHCI12_CTRL, 0x0f);
 	rtw_write8(Adapter, 0x15, 0xe9);
-#endif
 
 	rtw_write8(Adapter, REG_AFE_XTAL_CTRL+1, 0x80);
-
-#ifdef CONFIG_PCI_HCI
-	// Force use left antenna by default for 88C.
-	if(Adapter->ledpriv.LedStrategy != SW_LED_MODE10)
-	{
-		RegVal = rtw_read32(Adapter, REG_LEDCFG0);
-		rtw_write32(Adapter, REG_LEDCFG0, RegVal|BIT23);
-	}
-#endif
 
 	//
 	// Config BB and AGC
@@ -1737,7 +1635,7 @@ PHY_BBConfig8192D(
 
 extern	int
 PHY_RFConfig8192D(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 	)
 {
 	//HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -1794,8 +1692,8 @@ PHY_RFConfig8192D(
  *---------------------------------------------------------------------------*/
 int
 rtl8192d_PHY_ConfigRFWithParaFile(
-	IN	PADAPTER			Adapter,
-	IN	u8*				pFileName,
+	PADAPTER			Adapter,
+	u8*				pFileName,
 	RF_RADIO_PATH_E		eRFPath
 )
 {
@@ -1824,7 +1722,7 @@ rtl8192d_PHY_ConfigRFWithParaFile(
  *---------------------------------------------------------------------------*/
 int
 rtl8192d_PHY_ConfigRFWithHeaderFile(
-	IN	PADAPTER			Adapter,
+	PADAPTER			Adapter,
 	RF_CONTENT				Content,
 	RF_RADIO_PATH_E		eRFPath
 )
@@ -1990,9 +1888,9 @@ rtl8192d_PHY_ConfigRFWithHeaderFile(
  *---------------------------------------------------------------------------*/
 int
 rtl8192d_PHY_CheckBBAndRFOK(
-	IN	PADAPTER			Adapter,
-	IN	HW90_BLOCK_E		CheckBlock,
-	IN	RF_RADIO_PATH_E	eRFPath
+	PADAPTER			Adapter,
+	HW90_BLOCK_E		CheckBlock,
+	RF_RADIO_PATH_E	eRFPath
 	)
 {
 	int			rtStatus = _SUCCESS;
@@ -2065,7 +1963,7 @@ rtl8192d_PHY_CheckBBAndRFOK(
 
 VOID
 rtl8192d_PHY_GetHWRegOriginalValue(
-	IN	PADAPTER		Adapter
+	PADAPTER		Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -2097,9 +1995,9 @@ rtl8192d_PHY_GetHWRegOriginalValue(
 //
 static	u8
 phy_DbmToTxPwrIdx(
-	IN	PADAPTER		Adapter,
-	IN	WIRELESS_MODE	WirelessMode,
-	IN	int			PowerInDbm
+	PADAPTER		Adapter,
+	WIRELESS_MODE	WirelessMode,
+	int			PowerInDbm
 	)
 {
 	u8				TxPwrIdx = 0;
@@ -2154,9 +2052,9 @@ phy_DbmToTxPwrIdx(
 //
 static int
 phy_TxPwrIdxToDbm(
-	IN	PADAPTER		Adapter,
-	IN	WIRELESS_MODE	WirelessMode,
-	IN	u8			TxPwrIdx
+	PADAPTER		Adapter,
+	WIRELESS_MODE	WirelessMode,
+	u8			TxPwrIdx
 	)
 {
 	int				Offset = 0;
@@ -2204,8 +2102,8 @@ phy_TxPwrIdxToDbm(
  *---------------------------------------------------------------------------*/
 VOID
 PHY_GetTxPowerLevel8192D(
-	IN	PADAPTER		Adapter,
-	OUT u32*		powerlevel
+	PADAPTER		Adapter,
+	u32*		powerlevel
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -2240,10 +2138,10 @@ PHY_GetTxPowerLevel8192D(
 
 
 static void getTxPowerIndex(
-	IN	PADAPTER		Adapter,
-	IN	u8			channel,
-	IN OUT u8*		cckPowerLevel,
-	IN OUT u8*		ofdmPowerLevel
+	PADAPTER		Adapter,
+	u8			channel,
+	u8*		cckPowerLevel,
+	u8*		ofdmPowerLevel
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -2275,10 +2173,10 @@ static void getTxPowerIndex(
 }
 
 static void ccxPowerIndexCheck(
-	IN	PADAPTER		Adapter,
-	IN	u8			channel,
-	IN OUT u8*		cckPowerLevel,
-	IN OUT u8*		ofdmPowerLevel
+	PADAPTER		Adapter,
+	u8			channel,
+	u8*		cckPowerLevel,
+	u8*		ofdmPowerLevel
 	)
 {
 #if 0
@@ -2362,8 +2260,8 @@ static void ccxPowerIndexCheck(
  *---------------------------------------------------------------------------*/
 VOID
 PHY_SetTxPowerLevel8192D(
-	IN	PADAPTER		Adapter,
-	IN	u8			channel
+	PADAPTER		Adapter,
+	u8			channel
 	)
 {
 	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(Adapter);
@@ -2373,10 +2271,8 @@ PHY_SetTxPowerLevel8192D(
 	return;
 #endif
 
-#ifdef CONFIG_USB_HCI
 	if((Adapter->mlmeextpriv.sitesurvey_res.state == SCAN_PROCESS)&&(adapter_to_dvobj(Adapter)->ishighspeed == _FALSE))
 		return;
-#endif
 
 	if(pHalData->bTXPowerDataReadFromEEPORM == _FALSE)
 		return;
@@ -2430,8 +2326,8 @@ PHY_SetTxPowerLevel8192D(
 //
 BOOLEAN
 PHY_UpdateTxPowerDbm8192D(
-	IN	PADAPTER	Adapter,
-	IN	int		powerInDbm
+	PADAPTER	Adapter,
+	int		powerInDbm
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -2477,8 +2373,8 @@ PHY_UpdateTxPowerDbm8192D(
 
 void
 rtl8192d_PHY_SetBeaconHwReg(
-	IN	PADAPTER		Adapter,
-	IN	u16			BeaconInterval
+	PADAPTER		Adapter,
+	u16			BeaconInterval
 	)
 {
 
@@ -2487,8 +2383,8 @@ rtl8192d_PHY_SetBeaconHwReg(
 
 VOID
 PHY_ScanOperationBackup8192D(
-	IN	PADAPTER	Adapter,
-	IN	u8		Operation
+	PADAPTER	Adapter,
+	u8		Operation
 	)
 {
 #if 0
@@ -2534,7 +2430,7 @@ PHY_ScanOperationBackup8192D(
  *---------------------------------------------------------------------------*/
 static VOID
 _PHY_SetBWMode92D(
-	IN	PADAPTER	Adapter
+	PADAPTER	Adapter
 )
 {
 	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(Adapter);
@@ -2701,9 +2597,9 @@ _PHY_SetBWMode92D(
  *---------------------------------------------------------------------------*/
 VOID
 PHY_SetBWMode8192D(
-	IN	PADAPTER					Adapter,
-	IN	HT_CHANNEL_WIDTH	Bandwidth,	// 20M or 40M
-	IN	unsigned char	Offset		// Upper, Lower, or Don't care
+	PADAPTER					Adapter,
+	HT_CHANNEL_WIDTH	Bandwidth,	// 20M or 40M
+	unsigned char	Offset		// Upper, Lower, or Don't care
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -2802,12 +2698,8 @@ PHY_StopTRXBeforeChangeBand8192D(
 */
 void
 PHY_SwitchWirelessBand(
-	IN PADAPTER		 Adapter,
-	IN u8		Band);
-void
-PHY_SwitchWirelessBand(
-	IN PADAPTER		 Adapter,
-	IN u8		Band)
+	PADAPTER		 Adapter,
+	u8		Band)
 {
 	HAL_DATA_TYPE	*pHalData	= GET_HAL_DATA(Adapter);
 	struct dm_priv	*pdmpriv = &pHalData->dmpriv;
@@ -2850,11 +2742,6 @@ PHY_SwitchWirelessBand(
 		}
 	}
 #endif
-
-//#ifdef CONFIG_USB_HCI
-	//RT_ASSERT((KeGetCurrentIrql() == PASSIVE_LEVEL),
-	//	("MPT_ActSetWirelessMode819x(): not in PASSIVE_LEVEL!\n"));
-//#endif
 
 	//stop RX/Tx
 	PHY_StopTRXBeforeChangeBand8192D(Adapter);
@@ -2955,10 +2842,10 @@ PHY_SwitchWirelessBand(
 
 static VOID
 PHY_EnableRFENV(
-	IN	PADAPTER		Adapter,
-	IN	u8				eRFPath	,
-	IN	u32				MaskforPhySet,
-	OUT	u32*			pu4RegValue
+	PADAPTER		Adapter,
+	u8				eRFPath	,
+	u32				MaskforPhySet,
+	u32*			pu4RegValue
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -3000,10 +2887,10 @@ PHY_EnableRFENV(
 
 static VOID
 PHY_RestoreRFENV(
-	IN	PADAPTER		Adapter,
-	IN	u8				eRFPath,
-	IN	u32				MaskforPhySet,
-	IN	u32*			pu4RegValue
+	PADAPTER		Adapter,
+	u8				eRFPath,
+	u32				MaskforPhySet,
+	u32*			pu4RegValue
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -3033,7 +2920,7 @@ PHY_RestoreRFENV(
  *
  * Overview:	Change RF Setting when we siwthc channel for 92D C-cut.
  *
- * Input:       IN	PADAPTER				pAdapter
+ * Input:       PADAPTER				pAdapter
  *
  * Output:      NONE
  *
@@ -3047,8 +2934,8 @@ PHY_RestoreRFENV(
  *---------------------------------------------------------------------------*/
  static	VOID
  phy_SwitchRfSetting(
-	IN	PADAPTER			Adapter,
-	IN	u8					channel
+	PADAPTER			Adapter,
+	u8					channel
 	)
 {
 	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(Adapter);
@@ -3063,10 +2950,8 @@ PHY_RestoreRFENV(
 
 	//only for 92D C-cut SMSP
 
-#ifdef CONFIG_USB_HCI
 	if(adapter_to_dvobj(Adapter)->ishighspeed == _FALSE)
 		return;
-#endif
 
 	//config path A for 5G
 	if(pHalData->CurrentBandType92D==BAND_ON_5G)
@@ -3296,7 +3181,7 @@ PHY_RestoreRFENV(
  *
  * Overview:	Change RF Setting when we siwthc channel for 92D C-cut.
  *
- * Input:       IN	PADAPTER				pAdapter
+ * Input:       PADAPTER				pAdapter
  *
  * Output:      NONE
  *
@@ -3310,8 +3195,8 @@ PHY_RestoreRFENV(
  *---------------------------------------------------------------------------*/
 static  VOID
  phy_ReloadLCKSetting(
-	IN	PADAPTER				Adapter,
-	IN	u8					channel
+		PADAPTER				Adapter,
+	u8					channel
 	)
 {
 	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(Adapter);
@@ -3386,7 +3271,7 @@ static  VOID
  *
  * Overview:	Change RF Setting when we siwthc channel for 92D C-cut.
  *
- * Input:       IN	PADAPTER				pAdapter
+ * Input:       PADAPTER				pAdapter
  *
  * Output:      NONE
  *
@@ -3400,9 +3285,9 @@ static  VOID
  *---------------------------------------------------------------------------*/
  static VOID
  phy_ReloadIMRSetting(
-	IN	PADAPTER				Adapter,
-	IN	u8					channel,
-	IN	u8					eRFPath
+	PADAPTER				Adapter,
+	u8					channel,
+	u8					eRFPath
 	)
 {
 	HAL_DATA_TYPE		*pHalData = GET_HAL_DATA(Adapter);
@@ -3410,10 +3295,8 @@ static  VOID
 	u32		RFMask=bRFRegOffsetMask;
 	u8		group=0, i;
 
-#ifdef CONFIG_USB_HCI
 	if(adapter_to_dvobj(Adapter)->ishighspeed == _FALSE)
 		return;
-#endif
 
 	//only for 92D C-cut SMSP
 
@@ -3468,7 +3351,7 @@ static  VOID
  *
  * Overview:	Change RF Setting when we siwthc channel for 92D C-cut.
  *
- * Input:       IN	PADAPTER				pAdapter
+ * Input:       PADAPTER				pAdapter
  *
  * Output:      NONE
  *
@@ -3482,8 +3365,8 @@ static  VOID
  *---------------------------------------------------------------------------*/
  static VOID
  phy_ReloadIQKSetting(
-	IN	PADAPTER				Adapter,
-	IN	u8					channel
+	PADAPTER				Adapter,
+	u8					channel
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -3491,10 +3374,8 @@ static  VOID
 
 	//only for 92D C-cut SMSP
 
-#ifdef CONFIG_USB_HCI
 	if(adapter_to_dvobj(Adapter)->ishighspeed == _FALSE)
 		return;
-#endif
 
 	//RT_TRACE(COMP_CMD, DBG_LOUD, ("====>phy_ReloadIQKSetting interface %d channel %d \n", Adapter->interfaceIndex, channel));
 
@@ -3665,8 +3546,8 @@ static void _PHY_SwChnl8192D(PADAPTER Adapter, u8 channel)
 
 VOID
 PHY_SwChnl8192D(	// Call after initialization
-	IN	PADAPTER	Adapter,
-	IN	u8		channel
+	PADAPTER	Adapter,
+	u8		channel
 	)
 {
 	//PADAPTER Adapter =  ADJUST_TO_ADAPTIVE_ADAPTER(pAdapter, _TRUE);
@@ -3821,11 +3702,11 @@ PHY_SwChnl8192D(	// Call after initialization
 
 static	BOOLEAN
 phy_SwChnlStepByStep(
-	IN	PADAPTER	Adapter,
-	IN	u8		channel,
-	IN	u8		*stage,
-	IN	u8		*step,
-	OUT u32		*delay
+	PADAPTER	Adapter,
+	u8		channel,
+	u8		*stage,
+	u8		*step,
+	u32		*delay
 	)
 {
 	return _TRUE;
@@ -3869,8 +3750,8 @@ phy_SetSwChnlCmdArray(
 
 static	void
 phy_FinishSwChnlNow(	// We should not call this function directly
-		IN	PADAPTER	Adapter,
-		IN	u8		channel
+		PADAPTER	Adapter,
+		u8		channel
 		)
 {
 }
@@ -3887,8 +3768,8 @@ phy_FinishSwChnlNow(	// We should not call this function directly
 //
 VOID
 PHY_SwChnlPhy8192D(	// Only called during initialize
-	IN	PADAPTER	Adapter,
-	IN	u8		channel
+	PADAPTER	Adapter,
+	u8		channel
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -3933,8 +3814,8 @@ PHY_SwChnlPhy8192D(	// Only called during initialize
 //
 VOID
 PHY_SetMonitorMode8192D(
-	IN	PADAPTER			pAdapter,
-	IN	BOOLEAN				bEnableMonitorMode
+	PADAPTER			pAdapter,
+	BOOLEAN				bEnableMonitorMode
 	)
 {
 #if 0
@@ -3983,8 +3864,8 @@ PHY_SetMonitorMode8192D(
  *---------------------------------------------------------------------------*/
 BOOLEAN
 PHY_CheckIsLegalRfPath8192D(
-	IN	PADAPTER	pAdapter,
-	IN	u32	eRFPath)
+	PADAPTER	pAdapter,
+	u32	eRFPath)
 {
 //	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
 	BOOLEAN				rtValue = _TRUE;
@@ -4015,8 +3896,8 @@ PHY_CheckIsLegalRfPath8192D(
 
 static u8			//bit0 = 1 => Tx OK, bit1 = 1 => Rx OK
 phy_PathA_IQK(
-	IN	PADAPTER	pAdapter,
-	IN	BOOLEAN		configPathB
+	PADAPTER	pAdapter,
+	BOOLEAN		configPathB
 	)
 {
 	u32	regEAC, regE94, regE9C, regEA4;
@@ -4102,8 +3983,8 @@ phy_PathA_IQK(
 
 static u8			//bit0 = 1 => Tx OK, bit1 = 1 => Rx OK
 phy_PathA_IQK_5G_Normal(
-	IN	PADAPTER	pAdapter,
-	IN	BOOLEAN		configPathB
+	PADAPTER	pAdapter,
+	BOOLEAN		configPathB
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -4245,7 +4126,7 @@ phy_PathA_IQK_5G_Normal(
 
 static u8				//bit0 = 1 => Tx OK, bit1 = 1 => Rx OK
 phy_PathB_IQK(
-	IN	PADAPTER	pAdapter
+	PADAPTER	pAdapter
 	)
 {
 	u32 regEAC, regEB4, regEBC, regEC4, regECC;
@@ -4294,7 +4175,7 @@ phy_PathB_IQK(
 
 static u8				//bit0 = 1 => Tx OK, bit1 = 1 => Rx OK
 phy_PathB_IQK_5G_Normal(
-	IN	PADAPTER	pAdapter
+	PADAPTER	pAdapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -4423,11 +4304,11 @@ phy_PathB_IQK_5G_Normal(
 
 static VOID
 phy_PathAFillIQKMatrix(
-	IN PADAPTER	pAdapter,
-	IN BOOLEAN	bIQKOK,
-	IN int		result[][8],
-	IN u8		final_candidate,
-	IN BOOLEAN	bTxOnly
+	PADAPTER	pAdapter,
+	BOOLEAN	bIQKOK,
+	int		result[][8],
+	u8		final_candidate,
+	BOOLEAN	bTxOnly
 	)
 {
 	u32	Oldval_0, X, TX0_A, reg;
@@ -4490,11 +4371,11 @@ phy_PathAFillIQKMatrix(
 
 static VOID
 phy_PathAFillIQKMatrix_5G_Normal(
-	IN PADAPTER	pAdapter,
-	IN BOOLEAN	bIQKOK,
-	IN int		result[][8],
-	IN u8		final_candidate,
-	IN BOOLEAN	bTxOnly
+	PADAPTER	pAdapter,
+	BOOLEAN	bIQKOK,
+	int		result[][8],
+	u8		final_candidate,
+	BOOLEAN	bTxOnly
 	)
 {
 	u32	X, reg;
@@ -4558,11 +4439,11 @@ phy_PathAFillIQKMatrix_5G_Normal(
 
 static VOID
 phy_PathBFillIQKMatrix(
-	IN PADAPTER	pAdapter,
-	IN BOOLEAN	bIQKOK,
-	IN int		result[][8],
-	IN u8		final_candidate,
-	IN BOOLEAN	bTxOnly			//do Tx only
+	PADAPTER	pAdapter,
+	BOOLEAN	bIQKOK,
+	int		result[][8],
+	u8		final_candidate,
+	BOOLEAN	bTxOnly			//do Tx only
 	)
 {
 	u32	Oldval_1, X, TX1_A, reg;
@@ -4619,11 +4500,11 @@ phy_PathBFillIQKMatrix(
 
 static VOID
 phy_PathBFillIQKMatrix_5G_Normal(
-	IN PADAPTER	pAdapter,
-	IN BOOLEAN	bIQKOK,
-	IN int		result[][8],
-	IN u8		final_candidate,
-	IN BOOLEAN	bTxOnly			//do Tx only
+	PADAPTER	pAdapter,
+	BOOLEAN	bIQKOK,
+	int		result[][8],
+	u8		final_candidate,
+	BOOLEAN	bTxOnly			//do Tx only
 	)
 {
 	u32	X, reg;
@@ -4675,10 +4556,10 @@ phy_PathBFillIQKMatrix_5G_Normal(
 
 static VOID
 phy_SaveADDARegisters(
-	IN	PADAPTER	pAdapter,
-	IN	u32*		ADDAReg,
-	IN	u32*		ADDABackup,
-	IN	u32			RegisterNum
+	PADAPTER	pAdapter,
+	u32*		ADDAReg,
+	u32*		ADDABackup,
+	u32			RegisterNum
 	)
 {
 	u32	i;
@@ -4694,9 +4575,9 @@ phy_SaveADDARegisters(
 
 static VOID
 phy_SaveMACRegisters(
-	IN	PADAPTER	pAdapter,
-	IN	u32*		MACReg,
-	IN	u32*		MACBackup
+	PADAPTER	pAdapter,
+	u32*		MACReg,
+	u32*		MACBackup
 	)
 {
 	u32	i;
@@ -4711,10 +4592,10 @@ phy_SaveMACRegisters(
 
 static VOID
 phy_ReloadADDARegisters(
-	IN	PADAPTER	pAdapter,
-	IN	u32*		ADDAReg,
-	IN	u32*		ADDABackup,
-	IN	u32			RegiesterNum
+	PADAPTER	pAdapter,
+	u32*		ADDAReg,
+	u32*		ADDABackup,
+	u32			RegiesterNum
 	)
 {
 	u32	i;
@@ -4730,9 +4611,9 @@ phy_ReloadADDARegisters(
 
 static VOID
 phy_ReloadMACRegisters(
-	IN	PADAPTER	pAdapter,
-	IN	u32*		MACReg,
-	IN	u32*		MACBackup
+	PADAPTER	pAdapter,
+	u32*		MACReg,
+	u32*		MACBackup
 	)
 {
 	u32	i;
@@ -4746,10 +4627,10 @@ phy_ReloadMACRegisters(
 
 static VOID
 phy_PathADDAOn(
-	IN	PADAPTER	pAdapter,
-	IN	u32*		ADDAReg,
-	IN	BOOLEAN		isPathAOn,
-	IN	BOOLEAN		is2T
+	PADAPTER	pAdapter,
+	u32*		ADDAReg,
+	BOOLEAN		isPathAOn,
+	BOOLEAN		is2T
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -4771,9 +4652,9 @@ phy_PathADDAOn(
 
 static VOID
 phy_MACSettingCalibration(
-	IN	PADAPTER	pAdapter,
-	IN	u32*		MACReg,
-	IN	u32*		MACBackup
+	PADAPTER	pAdapter,
+	u32*		MACReg,
+	u32*		MACBackup
 	)
 {
 	u32	i = 0;
@@ -4791,7 +4672,7 @@ phy_MACSettingCalibration(
 
 static VOID
 phy_PathAStandBy(
-	IN	PADAPTER	pAdapter
+	PADAPTER	pAdapter
 	)
 {
 	//RTPRINT(FINIT, INIT_IQK, ("Path-A standby mode!\n"));
@@ -4803,8 +4684,8 @@ phy_PathAStandBy(
 
 static VOID
 phy_PIModeSwitch(
-	IN	PADAPTER	pAdapter,
-	IN	BOOLEAN		PIMode
+	PADAPTER	pAdapter,
+	BOOLEAN		PIMode
 	)
 {
 	u32	mode;
@@ -4818,10 +4699,10 @@ phy_PIModeSwitch(
 
 static BOOLEAN
 phy_SimularityCompare_92D(
-	IN	PADAPTER	pAdapter,
-	IN	int		result[][8],
-	IN	u8		 c1,
-	IN	u8		 c2
+	PADAPTER	pAdapter,
+	int		result[][8],
+	u8		 c1,
+	u8		 c2
 	)
 {
 	u32	i, j, diff, SimularityBitMap, bound = 0, u4temp = 0;
@@ -4910,10 +4791,10 @@ return _FALSE => do IQK again
 */
 static BOOLEAN
 phy_SimularityCompare(
-	IN	PADAPTER	pAdapter,
-	IN	int		result[][8],
-	IN	u8		 c1,
-	IN	u8		 c2
+	PADAPTER	pAdapter,
+	int		result[][8],
+	u8		 c1,
+	u8		 c2
 	)
 {
 	return phy_SimularityCompare_92D(pAdapter, result, c1, c2);
@@ -4921,10 +4802,10 @@ phy_SimularityCompare(
 
 static VOID
 phy_IQCalibrate(
-	IN	PADAPTER	pAdapter,
-	IN	int		result[][8],
-	IN	u8		t,
-	IN	BOOLEAN		is2T
+	PADAPTER	pAdapter,
+	int		result[][8],
+	u8		t,
+	BOOLEAN		is2T
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -5151,8 +5032,8 @@ phy_IQCalibrate(
 
 static VOID
 phy_IQCalibrate_5G(
-	IN	PADAPTER	pAdapter,
-	IN	int		result[][8]
+	PADAPTER	pAdapter,
+	int		result[][8]
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -5425,8 +5306,7 @@ phy_IQCalibrate_5G(
 	REG0xe40 = PHY_QueryBBReg(pAdapter, rTx_IQK, bMaskDWord);
 	REG0xeac = PHY_QueryBBReg(pAdapter, rRx_Power_After_IQK_A_2, bMaskDWord);
 	REG0xeb4 = PHY_QueryBBReg(pAdapter, rTx_Power_Before_IQK_B, bMaskDWord);
-	if(((REG0xeac&BIT(31)) == 0) && ((REG0xeb4&0x3FF0000)!=0x142))
-	{
+	if(((REG0xeac&BIT(31)) == 0) && ((REG0xeb4&0x3FF0000) >> 16 != 0x142)) {
 		TX_X1 = (PHY_QueryBBReg(pAdapter, rTx_Power_Before_IQK_B, bMaskDWord)&0x3FF0000)>>16;
 		TX_Y1 = (PHY_QueryBBReg(pAdapter, rTx_Power_After_IQK_B, bMaskDWord)&0x3FF0000)>>16;
 		RX1REG0xe40 = 0x80000000 | (REG0xe40 & 0xfc00fc00) | (TX_X1<<16) | TX_Y1;
@@ -5531,9 +5411,9 @@ Exit_IQK:
 }
 
 void phy_IQCalibrate_Setting(
-	IN	PADAPTER	pAdapter,
-	IN	BOOLEAN		is2T,
-	IN	BOOLEAN		isON
+	PADAPTER	pAdapter,
+	BOOLEAN		is2T,
+	BOOLEAN		isON
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -5624,10 +5504,10 @@ void phy_IQCalibrate_Setting(
 
 static VOID
 phy_IQCalibrate_5G_Normal(
-	IN	PADAPTER	pAdapter,
-	IN	int		result[][8],
-	IN	u8		t,
-	IN	u8		FromPT
+	PADAPTER	pAdapter,
+	int		result[][8],
+	u8		t,
+	u8		FromPT
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -5798,8 +5678,8 @@ phy_IQCalibrate_5G_Normal(
 #if SWLCK != 1
 static VOID
 phy_LCCalibrate92D(
-	IN	PADAPTER	pAdapter,
-	IN	BOOLEAN		is2T
+	PADAPTER	pAdapter,
+	BOOLEAN		is2T
 	)
 {
 	u8	tmpReg, index = 0;
@@ -5883,8 +5763,8 @@ phy_LCCalibrate92D(
 
 static u32
 get_abs(
-	IN	u32	val1,
-	IN	u32	val2
+	u32	val1,
+	u32	val2
 	)
 {
 	u32 ret=0;
@@ -5906,11 +5786,11 @@ get_abs(
 
 static VOID
 phy_CalcCurvIndex(
-	IN	PADAPTER	pAdapter,
-	IN	u32*		TargetChnl,
-	IN	u32*		CurveCountVal,
-	IN	BOOLEAN		is5G,
-	OUT	u32*		CurveIndex
+	PADAPTER	pAdapter,
+	u32*		TargetChnl,
+	u32*		CurveCountVal,
+	BOOLEAN		is5G,
+	u32*		CurveIndex
 	)
 {
 	u32	smallestABSVal = 0xffffffff, u4tmp;
@@ -5999,8 +5879,8 @@ phy_CalcCurvIndex(
 
 static VOID
 phy_LCCalibrate92DSW(
-	IN	PADAPTER	pAdapter,
-	IN	BOOLEAN		is2T
+	PADAPTER	pAdapter,
+	BOOLEAN		is2T
 	)
 {
 	u8	RF_mode[2], tmpReg, index = 0;
@@ -6148,7 +6028,7 @@ phy_LCCalibrate92DSW(
 
 static VOID
 phy_LCCalibrate92DSW_partial(
-	IN	PADAPTER	pAdapter
+	PADAPTER	pAdapter
 	)
 {
 	u8	index = 0;
@@ -6170,9 +6050,9 @@ phy_LCCalibrate92DSW_partial(
 
 static VOID
 phy_LCCalibrate(
-	IN	PADAPTER	pAdapter,
-	IN	BOOLEAN		is2T,
-	IN	BOOLEAN		bInit
+	PADAPTER	pAdapter,
+	BOOLEAN		is2T,
+	BOOLEAN		bInit
 	)
 {
 #if SWLCK == 1
@@ -6194,9 +6074,9 @@ phy_LCCalibrate(
 
 static VOID
 phy_APCalibrate(
-	IN	PADAPTER	pAdapter,
-	IN	char		delta,
-	IN	BOOLEAN		is2T
+	PADAPTER	pAdapter,
+	char		delta,
+	BOOLEAN		is2T
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -6533,12 +6413,7 @@ phy_APCalibrate(
 			}
 #endif
 
-#ifdef CONFIG_PCI_HCI
-			if(IS_81xxC_VENDOR_UMC_B_CUT(pHalData->VersionID))
-				PHY_SetRFReg(pAdapter, (RF_RADIO_PATH_E)path, RF_IPA_A, bRFRegOffsetMask, 0x894ae);
-			else
-#endif
-				PHY_SetRFReg(pAdapter, (RF_RADIO_PATH_E)path, RF_IPA_A, bRFRegOffsetMask, 0x8992e);
+			PHY_SetRFReg(pAdapter, (RF_RADIO_PATH_E)path, RF_IPA_A, bRFRegOffsetMask, 0x8992e);
 			//RTPRINT(FINIT, INIT_IQK, ("PHY_APCalibrate() offset 0xc %x\n", PHY_QueryRFReg(pAdapter, (RF_RADIO_PATH_E)path, RF_IPA_A, bRFRegOffsetMask)));
 			PHY_SetRFReg(pAdapter, (RF_RADIO_PATH_E)path, RF_AC, bRFRegOffsetMask, APK_RF_value_0[path][index]);
 			//RTPRINT(FINIT, INIT_IQK, ("PHY_APCalibrate() offset 0x0 %x\n", PHY_QueryRFReg(pAdapter, (RF_RADIO_PATH_E)path, RF_AC, bRFRegOffsetMask)));
@@ -6631,9 +6506,9 @@ phy_APCalibrate(
 }
 
 static VOID phy_SetRFPathSwitch(
-	IN	PADAPTER	pAdapter,
-	IN	BOOLEAN		bMain,
-	IN	BOOLEAN		is2T
+	PADAPTER	pAdapter,
+	BOOLEAN		bMain,
+	BOOLEAN		is2T
 	)
 {
 
@@ -6654,8 +6529,8 @@ static VOID phy_SetRFPathSwitch(
 
 VOID
 rtl8192d_PHY_IQCalibrate(
-	IN	PADAPTER	pAdapter,
-	IN	u8			FromPT
+	PADAPTER	pAdapter,
+	u8			FromPT
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -6846,8 +6721,8 @@ rtl8192d_PHY_IQCalibrate(
 
 VOID
 rtl8192d_PHY_LCCalibrate(
-	IN	PADAPTER	pAdapter,
-	IN	BOOLEAN		bInit
+	PADAPTER	pAdapter,
+	BOOLEAN		bInit
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -6911,8 +6786,8 @@ rtl8192d_PHY_LCCalibrate(
 
 VOID
 rtl8192d_PHY_APCalibrate(
-	IN	PADAPTER	pAdapter,
-	IN	char		delta
+	PADAPTER	pAdapter,
+	char		delta
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -6939,8 +6814,8 @@ rtl8192d_PHY_APCalibrate(
 
 /*
 VOID PHY_SetRFPathSwitch(
-	IN	PADAPTER	pAdapter,
-	IN	BOOLEAN		bMain
+	PADAPTER	pAdapter,
+	BOOLEAN		bMain
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -6962,16 +6837,12 @@ VOID PHY_SetRFPathSwitch(
 
 //return value TRUE => Main; FALSE => Aux
 BOOLEAN PHY_QueryRFPathSwitch(
-	IN	PADAPTER	pAdapter
+	PADAPTER	pAdapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
 
 #if DISABLE_BB_RF
-	return _TRUE;
-#endif
-
-#ifdef CONFIG_USB_HCI
 	return _TRUE;
 #endif
 
@@ -6988,8 +6859,8 @@ BOOLEAN PHY_QueryRFPathSwitch(
 
 VOID
 PHY_UpdateBBRFConfiguration8192D(
-	IN PADAPTER Adapter,
-	IN BOOLEAN bisBandSwitch
+	PADAPTER Adapter,
+	BOOLEAN bisBandSwitch
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -7256,19 +7127,9 @@ PHY_UpdateBBRFConfiguration8192D(
 			//--------------------------------------end
 
 			bMAC0NotUp = rtl8192d_PHY_EnableAnotherPHY(Adapter, _FALSE);
-			if(bMAC0NotUp)
-			{
-#ifdef CONFIG_PCI_HCI
-				//RT_TRACE(COMP_INIT,DBG_LOUD,("MAC1 use DBI to update 0x888"));
-				//0x888
-				MpWritePCIDwordDBI8192D(Adapter,
-									rFPGA0_AdDaClockEn,
-									MpReadPCIDwordDBI8192D(Adapter, rFPGA0_AdDaClockEn, BIT3)|BIT12|BIT13,
-									BIT3);
-#else	//USB interface
+			if(bMAC0NotUp) {
 				//RT_TRACE(COMP_INIT,DBG_LOUD,("MAC1 update MAC0's 0x888"));
 				PHY_SetBBReg(Adapter, rFPGA0_AdDaClockEn|MAC1_ACCESS_PHY0, BIT12|BIT13, 0x3);
-#endif
 				rtl8192d_PHY_PowerDownAnotherPHY(Adapter, _FALSE);
 			}
 		}
@@ -7337,8 +7198,8 @@ PHY_UpdateBBRFConfiguration8192D(
 //		2. PASSIVE_LEVEL (USB interface)
 //
 VOID PHY_ReadMacPhyMode92D(
-		IN PADAPTER			Adapter,
-		IN	BOOLEAN		AutoloadFail
+		PADAPTER			Adapter,
+		BOOLEAN		AutoloadFail
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -7380,7 +7241,7 @@ VOID PHY_ReadMacPhyMode92D(
 //		2. PASSIVE_LEVEL (USB interface)
 //
 VOID PHY_ConfigMacPhyMode92D(
-		IN PADAPTER			Adapter
+		PADAPTER			Adapter
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -7419,7 +7280,7 @@ VOID PHY_ConfigMacPhyMode92D(
 //		2. PASSIVE_LEVEL (USB interface)
 //
 VOID PHY_ConfigMacPhyModeInfo92D(
-		IN PADAPTER			Adapter
+		PADAPTER			Adapter
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -7565,7 +7426,7 @@ VOID PHY_ConfigMacPhyModeInfo92D(
 //		2. PASSIVE_LEVEL (USB interface)
 //
 VOID PHY_ConfigMacCoexist_RFPage92D(
-		IN PADAPTER			Adapter
+		PADAPTER			Adapter
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -7594,7 +7455,7 @@ VOID PHY_ConfigMacCoexist_RFPage92D(
 
 VOID
 rtl8192d_PHY_InitRxSetting(
-	IN	PADAPTER Adapter
+	PADAPTER Adapter
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -7618,7 +7479,7 @@ rtl8192d_PHY_InitRxSetting(
 
 VOID
 rtl8192d_PHY_ResetIQKResult(
-	IN	PADAPTER Adapter
+	PADAPTER Adapter
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -7647,8 +7508,8 @@ rtl8192d_PHY_ResetIQKResult(
 }
 
 VOID rtl8192d_PHY_SetRFPathSwitch(
-	IN	PADAPTER	pAdapter,
-	IN	BOOLEAN		bMain
+	PADAPTER	pAdapter,
+	BOOLEAN		bMain
 	)
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(pAdapter);
@@ -7669,8 +7530,8 @@ VOID rtl8192d_PHY_SetRFPathSwitch(
 
 VOID
 HalChangeCCKStatus8192D(
-	IN	PADAPTER	Adapter,
-	IN	BOOLEAN		bCCKDisable
+	PADAPTER	Adapter,
+	BOOLEAN		bCCKDisable
 )
 {
 	//PADAPTER	BuddyAdapter = Adapter->BuddyAdapter;
@@ -7750,7 +7611,7 @@ HalChangeCCKStatus8192D(
 }
 
 VOID
-PHY_InitPABias92D(IN	PADAPTER Adapter)
+PHY_InitPABias92D(PADAPTER Adapter)
 {
 	u8	tmpU1b;
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);

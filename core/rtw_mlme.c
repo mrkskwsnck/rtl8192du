@@ -53,9 +53,6 @@ sint	_rtw_init_mlme_priv (_adapter* padapter)
 
 _func_enter_;
 
-	// We don't need to memset padapter->XXX to zero, because adapter is allocated by rtw_zvmalloc().
-	//_rtw_memset((u8 *)pmlmepriv, 0, sizeof(struct mlme_priv));
-
 	pmlmepriv->nic_hdl = (u8 *)padapter;
 
 	pmlmepriv->pscanned = NULL;
@@ -289,21 +286,15 @@ _func_enter_;
 
 	curr_time = rtw_get_current_time();
 
-	if ( (check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE)==_TRUE ) ||
-		(check_fwstate(pmlmepriv, WIFI_ADHOC_STATE)==_TRUE ) )
+	if ((check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE)==_TRUE ) ||
+	    (check_fwstate(pmlmepriv, WIFI_ADHOC_STATE)==_TRUE))
 		lifetime = 1;
 
-	if(!isfreeall)
-	{
-#ifdef PLATFORM_LINUX
-
+	if (!isfreeall) {
 		delta_time = (curr_time -pnetwork->last_scanned)/HZ;
 
 		if(delta_time < lifetime)// unit:sec
-		{
 			goto exit;
-		}
-#endif
 	}
 
 	_enter_critical_bh(&free_queue->lock, &irqL);
@@ -314,15 +305,11 @@ _func_enter_;
 
 	pmlmepriv->num_of_scanned --;
 
-
-	//DBG_871X("_rtw_free_network:SSID=%s\n", pnetwork->network.Ssid.Ssid);
-
 	_exit_critical_bh(&free_queue->lock, &irqL);
 
 exit:
 
 _func_exit_;
-
 }
 
 void _rtw_free_network_nolock(struct	mlme_priv *pmlmepriv, struct wlan_network *pnetwork)
@@ -484,7 +471,7 @@ u16 rtw_get_capability(WLAN_BSSID_EX *bss)
 	u16	val;
 _func_enter_;
 
-	_rtw_memcpy((u8 *)&val, rtw_get_capability_from_ie(bss->IEs), 2);
+	memcpy((u8 *)&val, rtw_get_capability_from_ie(bss->IEs), 2);
 
 _func_exit_;
 	return le16_to_cpu(val);
@@ -624,8 +611,8 @@ int is_same_network(WLAN_BSSID_EX *src, WLAN_BSSID_EX *dst, u8 feature)
 
 _func_enter_;
 
-	_rtw_memcpy((u8 *)&s_cap, rtw_get_capability_from_ie(src->IEs), 2);
-	_rtw_memcpy((u8 *)&d_cap, rtw_get_capability_from_ie(dst->IEs), 2);
+	memcpy((u8 *)&s_cap, rtw_get_capability_from_ie(src->IEs), 2);
+	memcpy((u8 *)&d_cap, rtw_get_capability_from_ie(dst->IEs), 2);
 
 
 	s_cap = le16_to_cpu(s_cap);
@@ -784,7 +771,7 @@ _func_enter_;
 	if (update_ie) {
 		dst->Reserved[0] = src->Reserved[0];
 		dst->Reserved[1] = src->Reserved[1];
-		_rtw_memcpy((u8 *)dst, (u8 *)src, get_WLAN_BSSID_EX_sz(src));
+		memcpy((u8 *)dst, (u8 *)src, get_WLAN_BSSID_EX_sz(src));
 	}
 
 	dst->PhyInfo.SignalStrength = ss_final;
@@ -891,17 +878,11 @@ _func_enter_;
 		feature = 1; // p2p enable
 #endif
 
-	while(1)
-	{
+	while(1) {
 		if (rtw_end_of_queue_search(phead,plist)== _TRUE)
 			break;
 
 		pnetwork = LIST_CONTAINOR(plist, struct wlan_network, list);
-
-		if ((unsigned long)(pnetwork) < 0x7ffffff)
-		{
-		}
-
 
 		if (is_same_network(&(pnetwork->network), target, feature)) {
 			target_find = 1;
@@ -924,7 +905,6 @@ _func_enter_;
 	 * with this beacon's information */
 	//if (rtw_end_of_queue_search(phead,plist)== _TRUE) {
 	if (!target_find) {
-
 		if (_rtw_queue_empty(&(pmlmepriv->free_bss_pool)) == _TRUE) {
 			/* If there are no more slots, expire the oldest */
 			//list_del_init(&oldest->list);
@@ -934,7 +914,7 @@ _func_enter_;
 			//target->PhyInfo.Optimum_antenna = pHalData->CurAntenna;//optimum_antenna=>For antenna diversity
 			rtw_hal_get_def_var(adapter, HAL_DEF_CURRENT_ANTENNA, &(target->PhyInfo.Optimum_antenna));
 #endif
-			_rtw_memcpy(&(pnetwork->network), target,  get_WLAN_BSSID_EX_sz(target));
+			memcpy(&(pnetwork->network), target,  get_WLAN_BSSID_EX_sz(target));
 			//pnetwork->last_scanned = rtw_get_current_time();
 			// variable initialize
 			pnetwork->fixed = _FALSE;
@@ -964,7 +944,7 @@ _func_enter_;
 			//target->PhyInfo.Optimum_antenna = pHalData->CurAntenna;
 			rtw_hal_get_def_var(adapter, HAL_DEF_CURRENT_ANTENNA, &(target->PhyInfo.Optimum_antenna));
 #endif
-			_rtw_memcpy(&(pnetwork->network), target, bssid_ex_sz );
+			memcpy(&(pnetwork->network), target, bssid_ex_sz );
 
 			pnetwork->last_scanned = rtw_get_current_time();
 
@@ -1120,25 +1100,6 @@ _func_enter_;
 
 	RT_TRACE(_module_rtl871x_mlme_c_,_drv_info_,("rtw_survey_event_callback, ssid=%s\n",  pnetwork->Ssid.Ssid));
 
-#ifdef CONFIG_RTL8712
-        //endian_convert
-	pnetwork->Length = le32_to_cpu(pnetwork->Length);
-	pnetwork->Ssid.SsidLength = le32_to_cpu(pnetwork->Ssid.SsidLength);
-	pnetwork->Privacy =le32_to_cpu( pnetwork->Privacy);
-	pnetwork->Rssi = le32_to_cpu(pnetwork->Rssi);
-	pnetwork->NetworkTypeInUse =le32_to_cpu(pnetwork->NetworkTypeInUse);
-	pnetwork->Configuration.ATIMWindow = le32_to_cpu(pnetwork->Configuration.ATIMWindow);
-	pnetwork->Configuration.BeaconPeriod = le32_to_cpu(pnetwork->Configuration.BeaconPeriod);
-	pnetwork->Configuration.DSConfig =le32_to_cpu(pnetwork->Configuration.DSConfig);
-	pnetwork->Configuration.FHConfig.DwellTime=le32_to_cpu(pnetwork->Configuration.FHConfig.DwellTime);
-	pnetwork->Configuration.FHConfig.HopPattern=le32_to_cpu(pnetwork->Configuration.FHConfig.HopPattern);
-	pnetwork->Configuration.FHConfig.HopSet=le32_to_cpu(pnetwork->Configuration.FHConfig.HopSet);
-	pnetwork->Configuration.FHConfig.Length=le32_to_cpu(pnetwork->Configuration.FHConfig.Length);
-	pnetwork->Configuration.Length = le32_to_cpu(pnetwork->Configuration.Length);
-	pnetwork->InfrastructureMode = le32_to_cpu(pnetwork->InfrastructureMode);
-	pnetwork->IELength = le32_to_cpu(pnetwork->IELength);
-#endif
-
 	len = get_WLAN_BSSID_EX_sz(pnetwork);
 	if(len > (sizeof(WLAN_BSSID_EX)))
 	{
@@ -1158,12 +1119,12 @@ _func_enter_;
 			struct wlan_network* ibss_wlan = NULL;
 			_irqL	irqL;
 
-			_rtw_memcpy(pmlmepriv->cur_network.network.IEs, pnetwork->IEs, 8);
+			memcpy(pmlmepriv->cur_network.network.IEs, pnetwork->IEs, 8);
 			_enter_critical_bh(&(pmlmepriv->scanned_queue.lock), &irqL);
 			ibss_wlan = rtw_find_network(&pmlmepriv->scanned_queue,  pnetwork->MacAddress);
 			if(ibss_wlan)
 			{
-				_rtw_memcpy(ibss_wlan->network.IEs , pnetwork->IEs, 8);
+				memcpy(ibss_wlan->network.IEs , pnetwork->IEs, 8);
 				_exit_critical_bh(&(pmlmepriv->scanned_queue.lock), &irqL);
 				goto exit;
 			}
@@ -1172,12 +1133,9 @@ _func_enter_;
 	}
 
 	// lock pmlmepriv->lock when you accessing network_q
-	if ((check_fwstate(pmlmepriv, _FW_UNDER_LINKING)) == _FALSE)
-	{
+	if ((check_fwstate(pmlmepriv, _FW_UNDER_LINKING)) == _FALSE) {
 	        if( pnetwork->Ssid.Ssid[0] == 0 )
-		{
 			pnetwork->Ssid.SsidLength = 0;
-		}
 		rtw_add_network(adapter, pnetwork);
 	}
 
@@ -1265,7 +1223,7 @@ _func_enter_;
 					RT_TRACE(_module_rtl871x_mlme_c_,_drv_err_,("switching to adhoc master\n"));
 
 					_rtw_memset(&pdev_network->Ssid, 0, sizeof(NDIS_802_11_SSID));
-					_rtw_memcpy(&pdev_network->Ssid, &pmlmepriv->assoc_ssid, sizeof(NDIS_802_11_SSID));
+					memcpy(&pdev_network->Ssid, &pmlmepriv->assoc_ssid, sizeof(NDIS_802_11_SSID));
 
 					rtw_update_registrypriv_dev_network(adapter);
 					rtw_generate_random_ibss(pibss);
@@ -1857,7 +1815,7 @@ static void rtw_joinbss_update_network(_adapter *padapter, struct wlan_network *
 
 
 	// why not use ptarget_wlan??
-	_rtw_memcpy(&cur_network->network, &pnetwork->network, pnetwork->network.Length);
+	memcpy(&cur_network->network, &pnetwork->network, pnetwork->network.Length);
 
 	cur_network->aid = pnetwork->join_res;
 
@@ -1934,27 +1892,6 @@ void rtw_joinbss_event_prehandle(_adapter *adapter, u8 *pbuf)
 	unsigned int		the_same_macaddr = _FALSE;
 
 _func_enter_;
-
-#ifdef CONFIG_RTL8712
-       //endian_convert
-	pnetwork->join_res = le32_to_cpu(pnetwork->join_res);
-	pnetwork->network_type = le32_to_cpu(pnetwork->network_type);
-	pnetwork->network.Length = le32_to_cpu(pnetwork->network.Length);
-	pnetwork->network.Ssid.SsidLength = le32_to_cpu(pnetwork->network.Ssid.SsidLength);
-	pnetwork->network.Privacy =le32_to_cpu( pnetwork->network.Privacy);
-	pnetwork->network.Rssi = le32_to_cpu(pnetwork->network.Rssi);
-	pnetwork->network.NetworkTypeInUse =le32_to_cpu(pnetwork->network.NetworkTypeInUse) ;
-	pnetwork->network.Configuration.ATIMWindow = le32_to_cpu(pnetwork->network.Configuration.ATIMWindow);
-	pnetwork->network.Configuration.BeaconPeriod = le32_to_cpu(pnetwork->network.Configuration.BeaconPeriod);
-	pnetwork->network.Configuration.DSConfig = le32_to_cpu(pnetwork->network.Configuration.DSConfig);
-	pnetwork->network.Configuration.FHConfig.DwellTime=le32_to_cpu(pnetwork->network.Configuration.FHConfig.DwellTime);
-	pnetwork->network.Configuration.FHConfig.HopPattern=le32_to_cpu(pnetwork->network.Configuration.FHConfig.HopPattern);
-	pnetwork->network.Configuration.FHConfig.HopSet=le32_to_cpu(pnetwork->network.Configuration.FHConfig.HopSet);
-	pnetwork->network.Configuration.FHConfig.Length=le32_to_cpu(pnetwork->network.Configuration.FHConfig.Length);
-	pnetwork->network.Configuration.Length = le32_to_cpu(pnetwork->network.Configuration.Length);
-	pnetwork->network.InfrastructureMode = le32_to_cpu(pnetwork->network.InfrastructureMode);
-	pnetwork->network.IELength = le32_to_cpu(pnetwork->network.IELength );
-#endif
 
 	RT_TRACE(_module_rtl871x_mlme_c_,_drv_info_,("joinbss event call back received with res=%d\n", pnetwork->join_res));
 
@@ -2184,11 +2121,11 @@ _func_enter_;
 			_enter_critical_bh(&psta->lock, &irqL);
 			if(psta->passoc_req && psta->assoc_req_len>0)
 			{
-				passoc_req = rtw_zmalloc(psta->assoc_req_len);
+				passoc_req = kzalloc(psta->assoc_req_len, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
 				if(passoc_req)
 				{
 					assoc_req_len = psta->assoc_req_len;
-					_rtw_memcpy(passoc_req, psta->passoc_req, assoc_req_len);
+					memcpy(passoc_req, psta->passoc_req, assoc_req_len);
 
 					rtw_mfree(psta->passoc_req , psta->assoc_req_len);
 					psta->passoc_req = NULL;
@@ -2261,11 +2198,6 @@ _func_enter_;
 
 
 	mlmeext_sta_add_event_callback(adapter, psta);
-
-#ifdef CONFIG_RTL8711
-	//submit SetStaKey_cmd to tell fw, fw will allocate an CAM entry for this sta
-	rtw_setstakey_cmd(adapter, psta, _FALSE, _TRUE);
-#endif
 
 exit:
 
@@ -2384,10 +2316,10 @@ _func_enter_;
 			pdev_network = &(adapter->registrypriv.dev_network);
 			pibss = adapter->registrypriv.dev_network.MacAddress;
 
-			_rtw_memcpy(pdev_network, &tgt_network->network, get_WLAN_BSSID_EX_sz(&tgt_network->network));
+			memcpy(pdev_network, &tgt_network->network, get_WLAN_BSSID_EX_sz(&tgt_network->network));
 
 			_rtw_memset(&pdev_network->Ssid, 0, sizeof(NDIS_802_11_SSID));
-			_rtw_memcpy(&pdev_network->Ssid, &pmlmepriv->assoc_ssid, sizeof(NDIS_802_11_SSID));
+			memcpy(&pdev_network->Ssid, &pmlmepriv->assoc_ssid, sizeof(NDIS_802_11_SSID));
 
 			rtw_update_registrypriv_dev_network(adapter);
 
@@ -2898,7 +2830,7 @@ static int rtw_check_join_candidate(struct mlme_priv *mlme
 	}
 
 	//check ssid, if needed
-	if(mlme->assoc_ssid.Ssid && mlme->assoc_ssid.SsidLength) {
+	if (mlme->assoc_ssid.SsidLength) {
 		if( competitor->network.Ssid.SsidLength != mlme->assoc_ssid.SsidLength
 			|| _rtw_memcmp(competitor->network.Ssid.Ssid, mlme->assoc_ssid.Ssid, mlme->assoc_ssid.SsidLength) == _FALSE
 		)
@@ -3075,13 +3007,13 @@ sint rtw_set_auth(_adapter * adapter,struct security_priv *psecuritypriv)
 
 _func_enter_;
 
-	pcmd = (struct	cmd_obj*)rtw_zmalloc(sizeof(struct	cmd_obj));
+	pcmd = kzalloc(sizeof(struct cmd_obj), in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
 	if(pcmd==NULL){
 		res= _FAIL;  //try again
 		goto exit;
 	}
 
-	psetauthparm=(struct setauth_parm*)rtw_zmalloc(sizeof(struct setauth_parm));
+	psetauthparm=kzalloc(sizeof(struct setauth_parm), in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
 	if(psetauthparm==NULL){
 		rtw_mfree((unsigned char *)pcmd, sizeof(struct	cmd_obj));
 		res= _FAIL;
@@ -3124,7 +3056,7 @@ sint rtw_set_key(_adapter * adapter, struct security_priv *psecuritypriv,sint ke
 
 _func_enter_;
 
-	psetkeyparm=(struct setkey_parm*)rtw_zmalloc(sizeof(struct setkey_parm));
+	psetkeyparm=kzalloc(sizeof(struct setkey_parm), in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
 	if(psetkeyparm==NULL){
 		res= _FAIL;
 		goto exit;
@@ -3151,20 +3083,20 @@ _func_enter_;
 	switch(psetkeyparm->algorithm){
 		case _WEP40_:
 			keylen=5;
-			_rtw_memcpy(&(psetkeyparm->key[0]), &(psecuritypriv->dot11DefKey[keyid].skey[0]), keylen);
+			memcpy(&(psetkeyparm->key[0]), &(psecuritypriv->dot11DefKey[keyid].skey[0]), keylen);
 			break;
 		case _WEP104_:
 			keylen=13;
-			_rtw_memcpy(&(psetkeyparm->key[0]), &(psecuritypriv->dot11DefKey[keyid].skey[0]), keylen);
+			memcpy(&(psetkeyparm->key[0]), &(psecuritypriv->dot11DefKey[keyid].skey[0]), keylen);
 			break;
 		case _TKIP_:
 			keylen=16;
-			_rtw_memcpy(&psetkeyparm->key, &psecuritypriv->dot118021XGrpKey[keyid], keylen);
+			memcpy(&psetkeyparm->key, &psecuritypriv->dot118021XGrpKey[keyid], keylen);
 			psetkeyparm->grpkey=1;
 			break;
 		case _AES_:
 			keylen=16;
-			_rtw_memcpy(&psetkeyparm->key, &psecuritypriv->dot118021XGrpKey[keyid], keylen);
+			memcpy(&psetkeyparm->key, &psecuritypriv->dot118021XGrpKey[keyid], keylen);
 			psetkeyparm->grpkey=1;
 			break;
 		default:
@@ -3175,7 +3107,7 @@ _func_enter_;
 	}
 
 	if (enqueue) {
-		pcmd = (struct	cmd_obj*)rtw_zmalloc(sizeof(struct	cmd_obj));
+		pcmd = kzalloc(sizeof(struct cmd_obj), in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
 		if(pcmd==NULL){
 			rtw_mfree((u8*)psetkeyparm, sizeof(struct setkey_parm));
 			res= _FAIL;
@@ -3330,7 +3262,7 @@ static int rtw_append_pmkid(_adapter *adapter,int iEntry, u8 *ie, uint ie_len)
 		RTW_PUT_LE16(&ie[ie_len], 1);
 		ie_len += 2;
 
-		_rtw_memcpy(&ie[ie_len], &sec->PMKIDList[iEntry].PMKID, 16);
+		memcpy(&ie[ie_len], &sec->PMKIDList[iEntry].PMKID, 16);
 		ie_len += 16;
 
 		ie[13] += 18;//PMKID length = 2+16
@@ -3382,7 +3314,7 @@ _func_enter_;
 		  ndisauthmode, ndissecuritytype));
 
 	//copy fixed ie only
-	_rtw_memcpy(out_ie, in_ie,12);
+	memcpy(out_ie, in_ie,12);
 	ielength=12;
 	if((ndisauthmode==Ndis802_11AuthModeWPA)||(ndisauthmode==Ndis802_11AuthModeWPAPSK))
 			authmode=_WPA_IE_ID_;
@@ -3391,14 +3323,14 @@ _func_enter_;
 
 	if(check_fwstate(pmlmepriv, WIFI_UNDER_WPS))
 	{
-		_rtw_memcpy(out_ie+ielength, psecuritypriv->wps_ie, psecuritypriv->wps_ie_len);
+		memcpy(out_ie+ielength, psecuritypriv->wps_ie, psecuritypriv->wps_ie_len);
 
 		ielength += psecuritypriv->wps_ie_len;
 	}
 	else if((authmode==_WPA_IE_ID_)||(authmode==_WPA2_IE_ID_))
 	{
 		//copy RSN or SSN
-		_rtw_memcpy(&out_ie[ielength], &psecuritypriv->supplicant_ie[0], psecuritypriv->supplicant_ie[1]+2);
+		memcpy(&out_ie[ielength], &psecuritypriv->supplicant_ie[0], psecuritypriv->supplicant_ie[1]+2);
 		/* debug for CONFIG_IEEE80211W
 		{
 			int jj;
@@ -3441,9 +3373,9 @@ void rtw_init_registrypriv_dev_network(	_adapter* adapter)
 
 _func_enter_;
 
-	_rtw_memcpy(pdev_network->MacAddress, myhwaddr, ETH_ALEN);
+	memcpy(pdev_network->MacAddress, myhwaddr, ETH_ALEN);
 
-	_rtw_memcpy(&pdev_network->Ssid, &pregistrypriv->ssid, sizeof(NDIS_802_11_SSID));
+	memcpy(&pdev_network->Ssid, &pregistrypriv->ssid, sizeof(NDIS_802_11_SSID));
 
 	pdev_network->Configuration.Length=sizeof(NDIS_802_11_CONFIGURATION);
 	pdev_network->Configuration.BeaconPeriod = 100;
@@ -3566,7 +3498,6 @@ void rtw_joinbss_reset(_adapter *padapter)
 
 	phtpriv->ampdu_enable = _FALSE;//reset to disabled
 
-#ifdef CONFIG_USB_HCI
 	// TH=1 => means that invalidate usb rx aggregation
 	// TH=0 => means that validate usb rx aggregation, use init value.
 	if(phtpriv->ht_option)
@@ -3582,7 +3513,6 @@ void rtw_joinbss_reset(_adapter *padapter)
 		threshold = 1;
 		rtw_hal_set_hwreg(padapter, HW_VAR_RXDMA_AGG_PG_TH, (u8 *)(&threshold));
 	}
-#endif
 
 #endif
 
@@ -3662,7 +3592,7 @@ unsigned int rtw_restructure_ht_ie(_adapter *padapter, u8 *in_ie, u8 *out_ie, ui
 							sizeof(struct rtw_ieee80211_ht_cap), (unsigned char*)&ht_capie, pout_len);
 
 
-		//_rtw_memcpy(out_ie+out_len, p, ielen+2);//gtest
+		//memcpy(out_ie+out_len, p, ielen+2);//gtest
 		//*pout_len = *pout_len + (ielen+2);
 
 
@@ -3975,7 +3905,7 @@ void _rtw_roaming(_adapter *padapter, struct wlan_network *tgt_network)
 		DBG_871X("roaming from %s("MAC_FMT"), length:%d\n",
 				cur_network->network.Ssid.Ssid, MAC_ARG(cur_network->network.MacAddress),
 				cur_network->network.Ssid.SsidLength);
-		_rtw_memcpy(&pmlmepriv->assoc_ssid, &cur_network->network.Ssid, sizeof(NDIS_802_11_SSID));
+		memcpy(&pmlmepriv->assoc_ssid, &cur_network->network.Ssid, sizeof(NDIS_802_11_SSID));
 
 		pmlmepriv->assoc_by_bssid = _FALSE;
 

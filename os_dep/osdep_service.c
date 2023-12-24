@@ -26,6 +26,7 @@
 #include <drv_types.h>
 #include <recv_osdep.h>
 #include <linux/vmalloc.h>
+#include <linux/netdevice.h>
 #ifdef RTK_DMP_PLATFORM
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,12))
 #include <linux/pageremap.h>
@@ -34,12 +35,13 @@
 
 #define RT_TAG	'1178'
 
-#ifdef DBG_MEMORY_LEAK
-#include <asm/atomic.h>
-atomic_t _malloc_cnt = ATOMIC_INIT(0);
-atomic_t _malloc_size = ATOMIC_INIT(0);
-#endif /* DBG_MEMORY_LEAK */
-
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 11, 0))
+static inline ssize_t call_read_iter(struct file *file, struct kiocb *kio,
+				     struct iov_iter *iter)
+{
+	return file->f_op->read_iter(kio, iter);
+}
+#endif
 
 static ssize_t new_sync_read(struct file *filp, void __user *buf, __kernel_size_t len, loff_t *ppos)
 {
@@ -111,15 +113,8 @@ u32 rtw_atoi(u8* s)
 inline u8* _rtw_vmalloc(u32 sz)
 {
 	u8	*pbuf;
+
 	pbuf = vmalloc(sz);
-
-#ifdef DBG_MEMORY_LEAK
-	if ( pbuf != NULL) {
-		atomic_inc(&_malloc_cnt);
-		atomic_add(sz, &_malloc_size);
-	}
-#endif /* DBG_MEMORY_LEAK */
-
 	return pbuf;
 }
 
@@ -135,46 +130,6 @@ inline u8* _rtw_zvmalloc(u32 sz)
 inline void _rtw_vmfree(u8 *pbuf, u32 sz)
 {
 	vfree(pbuf);
-#ifdef DBG_MEMORY_LEAK
-	atomic_dec(&_malloc_cnt);
-	atomic_sub(sz, &_malloc_size);
-#endif /* DBG_MEMORY_LEAK */
-}
-
-u8* _rtw_malloc(u32 sz)
-{
-
-	u8	*pbuf=NULL;
-
-#ifdef RTK_DMP_PLATFORM
-	if(sz > 0x4000)
-		pbuf = (u8 *)dvr_malloc(sz);
-	else
-#endif
-		pbuf = kmalloc(sz,in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
-
-#ifdef DBG_MEMORY_LEAK
-	if ( pbuf != NULL) {
-		atomic_inc(&_malloc_cnt);
-		atomic_add(sz, &_malloc_size);
-	}
-#endif /* DBG_MEMORY_LEAK */
-
-	return pbuf;
-
-}
-
-
-u8* _rtw_zmalloc(u32 sz)
-{
-	u8	*pbuf = _rtw_malloc(sz);
-
-	if (pbuf != NULL) {
-
-		memset(pbuf, 0, sz);
-	}
-
-	return pbuf;
 }
 
 void	_rtw_mfree(u8 *pbuf, u32 sz)
@@ -186,12 +141,6 @@ void	_rtw_mfree(u8 *pbuf, u32 sz)
 	else
 #endif
 		kfree(pbuf);
-
-#ifdef DBG_MEMORY_LEAK
-	atomic_dec(&_malloc_cnt);
-	atomic_sub(sz, &_malloc_size);
-#endif /* DBG_MEMORY_LEAK */
-
 }
 
 
@@ -229,7 +178,6 @@ void _rtw_skb_queue_purge(struct sk_buff_head *list)
 		_rtw_skb_free(skb);
 }
 
-#ifdef CONFIG_USB_HCI
 inline void *_rtw_usb_buffer_alloc(struct usb_device *dev, size_t size, dma_addr_t *dma)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,35))
@@ -247,7 +195,6 @@ inline void _rtw_usb_buffer_free(struct usb_device *dev, size_t size, void *addr
 	usb_buffer_free(dev, size, addr, dma);
 #endif
 }
-#endif /* CONFIG_USB_HCI */
 
 #ifdef DBG_MEM_ALLOC
 
@@ -466,42 +413,6 @@ inline void dbg_rtw_vmfree(u8 *pbuf, u32 sz, const enum mstat_f flags, const cha
 	);
 }
 
-inline u8* dbg_rtw_malloc(u32 sz, const enum mstat_f flags, const char *func, const int line)
-{
-	u8 *p;
-
-	if (match_mstat_sniff_rules(flags, sz))
-		DBG_871X("DBG_MEM_ALLOC %s:%d %s(%d)\n", func, line, __FUNCTION__, (sz));
-
-	p=_rtw_malloc((sz));
-
-	rtw_mstat_update(
-		flags
-		, p ? MSTAT_ALLOC_SUCCESS : MSTAT_ALLOC_FAIL
-		, sz
-	);
-
-	return p;
-}
-
-inline u8* dbg_rtw_zmalloc(u32 sz, const enum mstat_f flags, const char *func, const int line)
-{
-	u8 *p;
-
-	if (match_mstat_sniff_rules(flags, sz))
-		DBG_871X("DBG_MEM_ALLOC %s:%d %s(%d)\n", func, line, __FUNCTION__, (sz));
-
-	p = _rtw_zmalloc((sz));
-
-	rtw_mstat_update(
-		flags
-		, p ? MSTAT_ALLOC_SUCCESS : MSTAT_ALLOC_FAIL
-		, sz
-	);
-
-	return p;
-}
-
 inline void dbg_rtw_mfree(u8 *pbuf, u32 sz, const enum mstat_f flags, const char *func, const int line)
 {
 	if (match_mstat_sniff_rules(flags, sz))
@@ -625,7 +536,6 @@ inline void dbg_rtw_skb_queue_purge(struct sk_buff_head *list, enum mstat_f flag
 		dbg_rtw_skb_free(skb, flags, func, line);
 }
 
-#ifdef CONFIG_USB_HCI
 inline void *dbg_rtw_usb_buffer_alloc(struct usb_device *dev, size_t size, dma_addr_t *dma, const enum mstat_f flags, const char *func, int line)
 {
 	void *p;
@@ -657,35 +567,7 @@ inline void dbg_rtw_usb_buffer_free(struct usb_device *dev, size_t size, void *a
 		, size
 	);
 }
-#endif /* CONFIG_USB_HCI */
 #endif /* DBG_MEM_ALLOC */
-
-void* rtw_malloc2d(int h, int w, int size)
-{
-	int j;
-
-	void **a = (void **) rtw_zmalloc( h*sizeof(void *) + h*w*size );
-	if(a == NULL)
-	{
-		DBG_871X("%s: alloc memory fail!\n", __FUNCTION__);
-		return NULL;
-	}
-
-	for( j=0; j<h; j++ )
-		a[j] = ((char *)(a+h)) + j*w*size;
-
-	return a;
-}
-
-void rtw_mfree2d(void *pbuf, int h, int w, int size)
-{
-	rtw_mfree((u8 *)pbuf, h*sizeof(void*) + w*h*size);
-}
-
-void _rtw_memcpy(void* dst, void* src, u32 sz)
-{
-	memcpy(dst, src, sz);
-}
 
 int	_rtw_memcmp(void *dst, void *src, u32 sz)
 {
@@ -1132,7 +1014,9 @@ static int isFileReadable(char *path)
 {
 	struct file *fp;
 	int ret = 0;
+#if defined(get_fs)
 	mm_segment_t oldfs;
+#endif
 	char buf;
 
 	fp=filp_open(path, O_RDONLY, 0);
@@ -1140,12 +1024,17 @@ static int isFileReadable(char *path)
 		ret = PTR_ERR(fp);
 	}
 	else {
-		oldfs = get_fs(); set_fs(get_ds());
+
+#if defined(get_fs)
+		oldfs = get_fs(); set_fs(KERNEL_DS);
+#endif
 
 		if(1!=readFile(fp, &buf, 1))
 			ret = PTR_ERR(fp);
 
+#if defined(get_fs)
 		set_fs(oldfs);
+#endif
 		filp_close(fp,NULL);
 	}
 	return ret;
@@ -1161,16 +1050,22 @@ static int isFileReadable(char *path)
 static int retriveFromFile(char *path, u8* buf, u32 sz)
 {
 	int ret =-1;
+#if defined(get_fs)
 	mm_segment_t oldfs;
+#endif
 	struct file *fp;
 
 	if(path && buf) {
 		if( 0 == (ret=openFile(&fp,path, O_RDONLY, 0)) ){
 			DBG_871X("%s openFile path:%s fp=%p\n",__FUNCTION__, path ,fp);
 
-			oldfs = get_fs(); set_fs(get_ds());
+#if defined(get_fs)
+			oldfs = get_fs(); set_fs(KERNEL_DS);
+#endif
 			ret=readFile(fp, buf, sz);
+#if defined(get_fs)
 			set_fs(oldfs);
+#endif
 			closeFile(fp);
 
 			DBG_871X("%s readFile, ret:%d\n",__FUNCTION__, ret);
@@ -1195,16 +1090,22 @@ static int retriveFromFile(char *path, u8* buf, u32 sz)
 static int storeToFile(char *path, u8* buf, u32 sz)
 {
 	int ret =0;
+#if defined(get_fs)
 	mm_segment_t oldfs;
+#endif
 	struct file *fp;
 
 	if(path && buf) {
 		if( 0 == (ret=openFile(&fp, path, O_CREAT|O_WRONLY, 0666)) ) {
 			DBG_871X("%s openFile path:%s fp=%p\n",__FUNCTION__, path ,fp);
 
-			oldfs = get_fs(); set_fs(get_ds());
+#if defined(get_fs)
+			oldfs = get_fs(); set_fs(KERNEL_DS);
+#endif
 			ret=writeFile(fp, buf, sz);
+#if defined(get_fs)
 			set_fs(oldfs);
+#endif
 			closeFile(fp);
 
 			DBG_871X("%s writeFile, ret:%d\n",__FUNCTION__, ret);
@@ -1367,7 +1268,7 @@ int rtw_change_ifname(_adapter *padapter, const char *ifname)
 
 	rtw_init_netdev_name(pnetdev, ifname);
 
-	_rtw_memcpy(pnetdev->dev_addr, padapter->eeprompriv.mac_addr, ETH_ALEN);
+	dev_addr_set(pnetdev, padapter->eeprompriv.mac_addr);
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26))
 	if(!rtnl_is_locked())
@@ -1431,10 +1332,10 @@ void rtw_buf_update(u8 **buf, u32 *buf_len, u8 *src, u32 src_len)
 		goto keep_ori;
 
 	/* duplicate src */
-	dup = rtw_malloc(src_len);
+	dup = kzalloc(src_len, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
 	if (dup) {
 		dup_len = src_len;
-		_rtw_memcpy(dup, src, dup_len);
+		memcpy(dup, src, dup_len);
 	}
 
 keep_ori:
@@ -1526,7 +1427,7 @@ struct rtw_cbuf *rtw_cbuf_alloc(u32 size)
 {
 	struct rtw_cbuf *cbuf;
 
-	cbuf = (struct rtw_cbuf *)rtw_malloc(sizeof(*cbuf) + sizeof(void*)*size);
+	cbuf = kzalloc(sizeof(*cbuf) + sizeof(void*)*size, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
 
 	if (cbuf) {
 		cbuf->write = cbuf->read = 0;

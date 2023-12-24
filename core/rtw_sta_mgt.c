@@ -205,8 +205,7 @@ void rtw_mfree_stainfo(struct sta_info *psta)
 {
 _func_enter_;
 
-	if(&psta->lock != NULL)
-		 _rtw_spinlock_free(&psta->lock);
+	 _rtw_spinlock_free(&psta->lock);
 
 	_rtw_free_sta_xmit_priv_lock(&psta->sta_xmitpriv);
 	_rtw_free_sta_recv_priv_lock(&psta->sta_recvpriv);
@@ -351,7 +350,7 @@ _func_enter_;
 
 		_rtw_init_stainfo(psta);
 
-		_rtw_memcpy(psta->hwaddr, hwaddr, ETH_ALEN);
+		memcpy(psta->hwaddr, hwaddr, ETH_ALEN);
 
 		index = wifi_mac_hash(hwaddr);
 
@@ -379,7 +378,7 @@ _func_enter_;
 
 		for( i = 0; i < 16; i++ )
 		{
-                     _rtw_memcpy( &psta->sta_recvpriv.rxcache.tid_rxseq[ i ], &wRxSeqInitialValue, 2 );
+                     memcpy( &psta->sta_recvpriv.rxcache.tid_rxseq[ i ], &wRxSeqInitialValue, 2 );
 			_rtw_memset(&psta->sta_recvpriv.rxcache.iv[i], 0, sizeof(psta->sta_recvpriv.rxcache.iv[i]));
 		}
 

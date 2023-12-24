@@ -395,7 +395,7 @@ ssize_t proc_set_roam_tgt_addr(struct file *file, const char __user *buffer, siz
 
 		int num = sscanf(tmp, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", addr, addr+1, addr+2, addr+3, addr+4, addr+5);
 		if (num == 6)
-			_rtw_memcpy(adapter->mlmepriv.roam_tgt_addr, addr, ETH_ALEN);
+			memcpy(adapter->mlmepriv.roam_tgt_addr, addr, ETH_ALEN);
 
 		DBG_871X("set roam_tgt_addr to "MAC_FMT"\n", MAC_ARG(adapter->mlmepriv.roam_tgt_addr));
 	}
@@ -577,19 +577,14 @@ int proc_get_trx_info(struct seq_file *m, void *v)
 	DBG_871X_SEL_NL(m, "read_port_complete_EINPROGRESS_cnt=%d\n", precvpriv->read_port_complete_EINPROGRESS_cnt);
 	DBG_871X_SEL_NL(m, "read_port_complete_other_urb_err_cnt=%d\n", precvpriv->read_port_complete_other_urb_err_cnt);
 	DBG_871X_SEL_NL(m, "hw_init_completed=%d\n", padapter->hw_init_completed);
-#ifdef CONFIG_USB_HCI
 	DBG_871X_SEL_NL(m, "continual_urb_error=%d\n", atomic_read(&pdvobj->continual_urb_error));
-#endif
 
 	for(i = 0; i < 4; i++)
 	{
 		phwxmit = pxmitpriv->hwxmits + i;
 		DBG_871X_SEL_NL(m, "%d, hwq.accnt=%d\n", i, phwxmit->accnt);
 	}
-
-#ifdef CONFIG_USB_HCI
 	DBG_871X_SEL_NL(m, "rx_urb_pending_cnt=%d\n", precvpriv->rx_pending_cnt);
-#endif
 
 	return 0;
 }
@@ -1016,20 +1011,6 @@ int proc_get_all_sta_info(struct seq_file *m, void *v)
 	return 0;
 }
 #endif /* CONFIG_AP_MODE */
-
-#ifdef DBG_MEMORY_LEAK
-#include <asm/atomic.h>
-extern atomic_t _malloc_cnt;;
-extern atomic_t _malloc_size;;
-
-int proc_get_malloc_cnt(struct seq_file *m, void *v)
-{
-	DBG_871X_SEL_NL(m, "_malloc_cnt=%d\n", atomic_read(&_malloc_cnt));
-	DBG_871X_SEL_NL(m, "_malloc_size=%d\n", atomic_read(&_malloc_size));
-
-	return 0;
-}
-#endif /* DBG_MEMORY_LEAK */
 
 #ifdef CONFIG_FIND_BEST_CHANNEL
 int proc_get_best_channel(struct seq_file *m, void *v)

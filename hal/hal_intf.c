@@ -26,13 +26,7 @@
 
 #include <hal_intf.h>
 
-#ifdef CONFIG_SDIO_HCI
-	#include <sdio_hal.h>
-#elif defined(CONFIG_USB_HCI)
-	#include <usb_hal.h>
-#elif defined(CONFIG_GSPI_HCI)
-	#include <gspi_hal.h>
-#endif
+#include <usb_hal.h>
 
 void rtw_hal_chip_configure(_adapter *padapter)
 {
@@ -313,7 +307,7 @@ s32	rtw_hal_mgnt_xmit(_adapter *padapter, struct xmit_frame *pmgntframe)
 
 	pframe = (u8 *)(pmgntframe->buf_addr) + TXDESC_OFFSET;
 	pwlanhdr = (struct rtw_ieee80211_hdr *)pframe;
-	_rtw_memcpy(pmgntframe->attrib.ra, pwlanhdr->addr1, ETH_ALEN);
+	memcpy(pmgntframe->attrib.ra, pwlanhdr->addr1, ETH_ALEN);
 
 #ifdef CONFIG_IEEE80211W
 	if(padapter->securitypriv.binstallBIPkey == _TRUE)

@@ -29,13 +29,7 @@
 #include <rtw_ioctl.h>
 #include <rtw_version.h>
 
-#ifdef CONFIG_USB_HCI
 #include <usb_osintf.h>
-#endif
-
-#ifdef CONFIG_PCI_HCI
-#include <pci_osintf.h>
-#endif
 
 #ifdef CONFIG_BR_EXT
 #include <rtw_br_ext.h>
@@ -149,11 +143,7 @@ int rtw_hwpwrp_detect = 1;
 int rtw_hwpwrp_detect = 0; //HW power  ping detect 0:disable , 1:enable
 #endif
 
-#ifdef CONFIG_USB_HCI
 int rtw_hw_wps_pbc = 1;
-#else
-int rtw_hw_wps_pbc = 0;
-#endif
 
 #ifdef CONFIG_TX_MCAST2UNI
 int rtw_mc2u_disable = 0;
@@ -282,7 +272,7 @@ _func_enter_;
 	//registry_par->hci = (u8)hci;
 	registry_par->network_mode  = (u8)rtw_network_mode;
 
-	_rtw_memcpy(registry_par->ssid.Ssid, "ANY", 3);
+	memcpy(registry_par->ssid.Ssid, "ANY", 3);
 	registry_par->ssid.SsidLength = 3;
 
 	registry_par->channel = (u8)rtw_channel;
@@ -401,8 +391,8 @@ static int rtw_net_set_mac_address(struct net_device *pnetdev, void *p)
 	{
 		//DBG_871X("r8711_net_set_mac_address(), MAC=%x:%x:%x:%x:%x:%x\n", addr->sa_data[0], addr->sa_data[1], addr->sa_data[2], addr->sa_data[3],
 		//addr->sa_data[4], addr->sa_data[5]);
-		_rtw_memcpy(padapter->eeprompriv.mac_addr, addr->sa_data, ETH_ALEN);
-		//_rtw_memcpy(pnetdev->dev_addr, addr->sa_data, ETH_ALEN);
+		memcpy(padapter->eeprompriv.mac_addr, addr->sa_data, ETH_ALEN);
+		//memcpy(pnetdev->dev_addr, addr->sa_data, ETH_ALEN);
 		//padapter->bset_hwaddr = _TRUE;
 	}
 
@@ -461,11 +451,14 @@ unsigned int rtw_classify8021d(struct sk_buff *skb)
 }
 
 static u16 rtw_select_queue(struct net_device *dev, struct sk_buff *skb
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)
-					, void *accel_priv
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
-				, select_queue_fallback_t fallback
-#endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0))
+			    ,struct net_device *sb_dev
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+			    ,struct net_device *sb_dev
+                            ,select_queue_fallback_t fallback
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0))
+ 			    ,void *unused
+                             ,select_queue_fallback_t fallback
 #endif
 )
 {
@@ -490,7 +483,7 @@ u16 rtw_recv_select_queue(struct sk_buff *skb)
 	u32 priority;
 	u8 *pdata = skb->data;
 
-	_rtw_memcpy(&eth_type, pdata+(ETH_ALEN<<1), 2);
+	memcpy(&eth_type, pdata+(ETH_ALEN<<1), 2);
 
 	switch (eth_type) {
 		case htons(ETH_P_IP):
@@ -681,7 +674,7 @@ struct net_device *rtw_init_netdev(_adapter *old_padapter)
 #endif
 	//pnetdev->tx_timeout = NULL;
 	pnetdev->watchdog_timeo = HZ*3; /* 3 second timeout */
-#ifdef CONFIG_WIRELESS_EXT
+#ifdef CONFIG_NO_WIRELESS_HANDLERS
 	pnetdev->wireless_handlers = (struct iw_handler_def *)&rtw_handlers_def;
 #endif
 
@@ -718,7 +711,11 @@ void rtw_unregister_netdevs(struct dvobj_priv *dvobj)
 		if (padapter->DriverState != DRIVER_DISAPPEAR) {
 #ifdef CONFIG_IOCTL_CFG80211
 			struct wireless_dev *wdev = padapter->rtw_wdev;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,19, 2))
+			wdev->connected = 0;
+#else
 			wdev->current_bss = NULL;
+#endif
 			pnetdev->reg_state = NETREG_REGISTERED;
 #endif
 			unregister_netdev(pnetdev); //will call netdev_close()
@@ -886,7 +883,7 @@ struct dvobj_priv *devobj_init(void)
 {
 	struct dvobj_priv *pdvobj = NULL;
 
-	if ((pdvobj = (struct dvobj_priv*)rtw_zmalloc(sizeof(*pdvobj))) == NULL)
+	if ((pdvobj = kzalloc(sizeof(*pdvobj), in_interrupt() ? GFP_ATOMIC : GFP_KERNEL)) == NULL)
 		return NULL;
 
 	_rtw_mutex_init(&pdvobj->hw_init_mutex);
@@ -1236,9 +1233,7 @@ u8 rtw_free_drv_sw(_adapter *padapter)
 
 #ifdef CONFIG_CONCURRENT_MODE
 
-#ifdef CONFIG_USB_HCI
-	#include <usb_hal.h>
-#endif
+#include <usb_hal.h>
 
 #ifdef CONFIG_MULTI_VIR_IFACES
 int _netdev_vir_if_open(struct net_device *pnetdev)
@@ -1265,7 +1260,7 @@ int _netdev_vir_if_open(struct net_device *pnetdev)
 		padapter->bSurpriseRemoved = _FALSE;
 		padapter->bCardDisableWOHSM = _FALSE;
 
-		_rtw_memcpy(padapter->HalData, primary_padapter->HalData, padapter->hal_data_sz);
+		memcpy(padapter->HalData, primary_padapter->HalData, padapter->hal_data_sz);
 
 		padapter->bFWReady = primary_padapter->bFWReady;
 
@@ -1390,7 +1385,7 @@ _adapter *rtw_drv_add_vir_if(_adapter *primary_padapter, void (*set_intf_ops)(st
 
 	/****** init adapter ******/
 	padapter = rtw_netdev_priv(pnetdev);
-	_rtw_memcpy(padapter, primary_padapter, sizeof(_adapter));
+	memcpy(padapter, primary_padapter, sizeof(_adapter));
 
 	//
 	padapter->bup = _FALSE;
@@ -1431,19 +1426,7 @@ _adapter *rtw_drv_add_vir_if(_adapter *primary_padapter, void (*set_intf_ops)(st
 	padapter->HardwareType = primary_padapter->HardwareType;
 
 	//set hal data & hal ops
-#if defined(CONFIG_RTL8192C)
-	#if defined(CONFIG_PCI_HCI)
-		rtl8192ce_set_hal_ops(padapter);
-	#elif defined(CONFIG_USB_HCI)
-		rtl8192cu_set_hal_ops(padapter);
-	#endif
-#elif defined(CONFIG_RTL8192D)
-	#if defined(CONFIG_PCI_HCI)
-		rtl8192de_set_hal_ops(padapter);
-	#elif defined(CONFIG_USB_HCI)
-		rtl8192du_set_hal_ops(padapter);
-	#endif
-#endif
+	rtl8192du_set_hal_ops(padapter);
 
 	padapter->HalFunc.inirp_init = NULL;
 	padapter->HalFunc.inirp_deinit = NULL;
@@ -1468,7 +1451,7 @@ _adapter *rtw_drv_add_vir_if(_adapter *primary_padapter, void (*set_intf_ops)(st
 
 
 	//get mac address from primary_padapter
-	_rtw_memcpy(mac, primary_padapter->eeprompriv.mac_addr, ETH_ALEN);
+	memcpy(mac, primary_padapter->eeprompriv.mac_addr, ETH_ALEN);
 
 	if (((mac[0]==0xff) &&(mac[1]==0xff) && (mac[2]==0xff) &&
 	     (mac[3]==0xff) && (mac[4]==0xff) &&(mac[5]==0xff)) ||
@@ -1492,7 +1475,7 @@ _adapter *rtw_drv_add_vir_if(_adapter *primary_padapter, void (*set_intf_ops)(st
 #endif
 	}
 
-	_rtw_memcpy(padapter->eeprompriv.mac_addr, mac, ETH_ALEN);
+	memcpy(padapter->eeprompriv.mac_addr, mac, ETH_ALEN);
 
 	padapter->dir_dev = NULL;
 
@@ -1629,7 +1612,7 @@ int _netdev_if2_open(struct net_device *pnetdev)
 		padapter->bSurpriseRemoved = _FALSE;
 		padapter->bCardDisableWOHSM = _FALSE;
 
-		_rtw_memcpy(padapter->HalData, primary_padapter->HalData, padapter->hal_data_sz);
+		memcpy(padapter->HalData, primary_padapter->HalData, padapter->hal_data_sz);
 
 		padapter->bFWReady = primary_padapter->bFWReady;
 
@@ -1684,17 +1667,6 @@ netdev_if2_open_error:
 
 }
 
-int netdev_if2_open(struct net_device *pnetdev)
-{
-	int ret;
-	_adapter *padapter = (_adapter *)rtw_netdev_priv(pnetdev);
-
-	_enter_critical_mutex(&(adapter_to_dvobj(padapter)->hw_init_mutex), NULL);
-	ret = _netdev_if2_open(pnetdev);
-	_exit_critical_mutex(&(adapter_to_dvobj(padapter)->hw_init_mutex), NULL);
-	return ret;
-}
-
 static int netdev_if2_close(struct net_device *pnetdev)
 {
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(pnetdev);
@@ -1723,7 +1695,7 @@ static int netdev_if2_close(struct net_device *pnetdev)
 static const struct net_device_ops rtw_netdev_if2_ops = {
 	.ndo_init = rtw_ndev_init,
 	.ndo_uninit = rtw_ndev_uninit,
-	.ndo_open = netdev_if2_open,
+	.ndo_open = _netdev_if2_open,
 	.ndo_stop = netdev_if2_close,
 	.ndo_start_xmit = rtw_xmit_entry,
 	.ndo_set_mac_address = rtw_net_set_mac_address,
@@ -1754,7 +1726,7 @@ _adapter *rtw_drv_if2_init(_adapter *primary_padapter, void (*set_intf_ops)(stru
 #else
 	pnetdev->init = rtw_ndev_init;
 	pnetdev->uninit = rtw_ndev_uninit;
-	pnetdev->open = netdev_if2_open;
+	pnetdev->open = _netdev_if2_open;
 	pnetdev->stop = netdev_if2_close;
 #endif
 
@@ -1764,7 +1736,7 @@ _adapter *rtw_drv_if2_init(_adapter *primary_padapter, void (*set_intf_ops)(stru
 
 	/****** init adapter ******/
 	padapter = rtw_netdev_priv(pnetdev);
-	_rtw_memcpy(padapter, primary_padapter, sizeof(_adapter));
+	memcpy(padapter, primary_padapter, sizeof(_adapter));
 
 	//
 	padapter->bup = _FALSE;
@@ -1800,19 +1772,7 @@ _adapter *rtw_drv_if2_init(_adapter *primary_padapter, void (*set_intf_ops)(stru
 	padapter->HardwareType = primary_padapter->HardwareType;
 
 	//set hal data & hal ops
-#if defined(CONFIG_RTL8192C)
-	#if defined(CONFIG_PCI_HCI)
-		rtl8192ce_set_hal_ops(padapter);
-	#elif defined(CONFIG_USB_HCI)
-		rtl8192cu_set_hal_ops(padapter);
-	#endif
-#elif defined(CONFIG_RTL8192D)
-	#if defined(CONFIG_PCI_HCI)
-		rtl8192de_set_hal_ops(padapter);
-	#elif defined(CONFIG_USB_HCI)
-		rtl8192du_set_hal_ops(padapter);
-	#endif
-#endif
+	rtl8192du_set_hal_ops(padapter);
 
 	padapter->HalFunc.inirp_init = NULL;
 	padapter->HalFunc.inirp_deinit = NULL;
@@ -1838,7 +1798,7 @@ _adapter *rtw_drv_if2_init(_adapter *primary_padapter, void (*set_intf_ops)(stru
 		goto error_rtw_drv_if2_init;
 
 	//get mac address from primary_padapter
-	_rtw_memcpy(mac, primary_padapter->eeprompriv.mac_addr, ETH_ALEN);
+	memcpy(mac, primary_padapter->eeprompriv.mac_addr, ETH_ALEN);
 
 	if (((mac[0]==0xff) &&(mac[1]==0xff) && (mac[2]==0xff) &&
 	     (mac[3]==0xff) && (mac[4]==0xff) &&(mac[5]==0xff)) ||
@@ -1860,7 +1820,7 @@ _adapter *rtw_drv_if2_init(_adapter *primary_padapter, void (*set_intf_ops)(stru
 
 	}
 
-	_rtw_memcpy(padapter->eeprompriv.mac_addr, mac, ETH_ALEN);
+	memcpy(padapter->eeprompriv.mac_addr, mac, ETH_ALEN);
 	rtw_init_wifidirect_addrs(padapter, padapter->eeprompriv.mac_addr, padapter->eeprompriv.mac_addr);
 
 	primary_padapter->pbuddy_adapter = padapter;
@@ -1991,7 +1951,7 @@ static int _rtw_drv_register_netdev(_adapter *padapter, char *name)
 	/* alloc netdev name */
 	rtw_init_netdev_name(pnetdev, name);
 
-	_rtw_memcpy(pnetdev->dev_addr, padapter->eeprompriv.mac_addr, ETH_ALEN);
+	dev_addr_set(pnetdev, padapter->eeprompriv.mac_addr);
 	memcpy(wiphy->perm_addr, pnetdev->dev_addr, ETH_ALEN);
 
 	/* Tell the network stack we exist */
@@ -2154,9 +2114,7 @@ int netdev_open(struct net_device *pnetdev)
 	int ret;
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(pnetdev);
 
-	_enter_critical_mutex(&(adapter_to_dvobj(padapter)->hw_init_mutex), NULL);
 	ret = _netdev_open(pnetdev);
-	_exit_critical_mutex(&(adapter_to_dvobj(padapter)->hw_init_mutex), NULL);
 
 	return ret;
 }
@@ -2326,7 +2284,11 @@ static int netdev_close(struct net_device *pnetdev)
 
 #ifdef CONFIG_IOCTL_CFG80211
 	wdev->iftype = NL80211_IFTYPE_STATION;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,19, 2))
+	wdev->connected = 0;
+#else
 	wdev->current_bss = NULL;
+#endif
 	rtw_scan_abort(padapter);
 	adapter_wdev_data(padapter)->bandroid_scan = _FALSE;
 	padapter->rtw_wdev->iftype = NL80211_IFTYPE_STATION; //set this at the end

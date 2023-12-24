@@ -23,9 +23,7 @@
 #include <drv_types.h>
 #include <rtw_mp.h>
 
-#ifdef CONFIG_RTL8192D
 #include <rtl8192d_hal.h>
-#endif
 
 #define IQK_DELAY_TIME		1	//ms
 
@@ -262,10 +260,8 @@ void Hal_SetAntenna(PADAPTER pAdapter)
 				PHY_SetBBReg(pAdapter, rOFDM0_TRxPathEnable, 0x0000000f, r_rx_antenna_ofdm);	//OFDM Rx
 				PHY_SetBBReg(pAdapter, rOFDM1_TRxPathEnable, 0x0000000f, r_rx_antenna_ofdm);	//OFDM Rx
 				PHY_SetBBReg(pAdapter, rCCK0_AFESetting, bMaskByte3, r_ant_select_cck_val);//r_ant_sel_cck_val);		//CCK TxRx
-#ifdef CONFIG_RTL8192D
 				if(pHalData->CurrentBandType92D == BAND_ON_2_4G || IS_92D_SINGLEPHY(pHalData->VersionID))
 						rtw_write8(pAdapter, rCCK0_AFESetting+3, r_ant_select_cck_val);
-#endif
 				break;
 
 			default:
@@ -865,14 +861,9 @@ PHY_PowerDownAnotherPHY(
 {
 //	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
 	u1Byte					u1bTmp;
-#if defined(CONFIG_PCI_HCI)
-	u1Byte			Direct = (bMac0==_TRUE)? BIT3|BIT2:BIT3;
-#endif
 	u1Byte			MAC_REG = (bMac0==_TRUE)? REG_MAC1:REG_MAC0;
 	u1Byte			MAC_ON_BIT = (bMac0==_TRUE)? MAC1_ON:MAC0_ON;
-#if defined(CONFIG_USB_HCI)
 	u4Byte			MaskforPhySet = 0;
-#endif
 
 	 // RT_TRACE(COMP_RF, DBG_LOUD, ("====>PHY_PowerDownAnotherPHY\n"));
 
@@ -884,19 +875,11 @@ PHY_PowerDownAnotherPHY(
 		//RT_TRACE(COMP_INIT, DBG_LOUD, ("PHY_PowerDownAnotherPHY power down\n"));
 
 		// power down RF radio A according to YuNan's advice.
-#if defined(CONFIG_PCI_HCI)
-			  HalWritePCIDwordDBI8192C(Adapter,
-						rFPGA0_XA_LSSIParameter,
-						0x00000000,
-						Direct);
-#elif defined(CONFIG_USB_HCI)
-			if(bMac0)
-				MaskforPhySet = MAC0_ACCESS_PHY1;
-			else
-				MaskforPhySet = MAC1_ACCESS_PHY0;
-			  _rtw_write32(Adapter, rFPGA0_XA_LSSIParameter|MaskforPhySet, 0x00000000);
-
-#endif
+		if(bMac0)
+			MaskforPhySet = MAC0_ACCESS_PHY1;
+		else
+			MaskforPhySet = MAC1_ACCESS_PHY0;
+		  _rtw_write32(Adapter, rFPGA0_XA_LSSIParameter|MaskforPhySet, 0x00000000);
 	}
 
 	 // RT_TRACE(COMP_RF, DBG_LOUD, ("<====PHY_PowerDownAnotherPHY\n"));
@@ -913,15 +896,10 @@ PHY_EnableAnotherPHY(
 	)
 {
 	u1Byte					u1bTmp;
-#ifdef CONFIG_PCI_HCI
-	u1Byte			Direct = (bMac0==_TRUE)? BIT3|BIT2:BIT3;
-#endif
 	u1Byte			MAC_REG = (bMac0==_TRUE)?REG_MAC1:REG_MAC0;
 	u1Byte			MAC_ON_BIT = bMac0==_TRUE?MAC1_ON:MAC0_ON;
 	BOOLEAN			bResult = _TRUE; //true: need to enable BB/RF power
-#ifdef CONFIG_USB_HCI
 	u4Byte			MaskForPHYSet = 0;
-#endif
 
 //	RT_TRACE(COMP_RF, DBG_LOUD, ("===>PHY_EnableAnotherPHY\n"));
 
@@ -931,25 +909,16 @@ PHY_EnableAnotherPHY(
 	  if (!(u1bTmp&MAC_ON_BIT))
 	{
 
-	//   RT_TRACE(COMP_INIT, DBG_LOUD, ("PHY_EnableAnotherPHY enable BB & RF\n"));
+		// RT_TRACE(COMP_INIT, DBG_LOUD, ("PHY_EnableAnotherPHY enable BB & RF\n"));
 
-	   // Enable BB and RF power
-#if defined(CONFIG_PCI_HCI)
-		HalWritePCIDwordDBI8192C(Adapter,
-			REG_SYS_ISO_CTRL,
-			HalReadPCIDwordDBI8192C(Adapter, REG_SYS_ISO_CTRL, Direct)|BIT29|BIT16|BIT17,
-			Direct);
-#elif defined(CONFIG_USB_HCI)
+		// Enable BB and RF power
 		if(bMac0)
 			MaskForPHYSet = MAC0_ACCESS_PHY1;
 		else
 			MaskForPHYSet = MAC1_ACCESS_PHY0;
 		_rtw_write16(Adapter, REG_SYS_FUNC_EN|MaskForPHYSet, _rtw_read16(Adapter, REG_SYS_FUNC_EN|MaskForPHYSet)&0xFFFC);
 		_rtw_write16(Adapter, REG_SYS_FUNC_EN|MaskForPHYSet, _rtw_read16(Adapter, REG_SYS_FUNC_EN|MaskForPHYSet)|BIT13|BIT0|BIT1);
-#endif
-	}
-	else
-	{
+	} else {
 		// We think if MAC1 is ON,then radio_a.txt and radio_b.txt has been load.
 		bResult = _FALSE;
 	}
@@ -1091,27 +1060,9 @@ VOID
 	//Query regB30 bit27
 	u32		Regb30 = PHY_QueryBBReg(Adapter, 0xb30, BIT27);
 
-#ifdef CONFIG_PCI_HCI
-	if(IS_81xxC_VENDOR_UMC_B_CUT(pHalData->VersionID))
-	{
-		if(channel == 6 && pHalData->CurrentChannelBW == HT_CHANNEL_WIDTH_20)
-			PHY_SetRFReg(Adapter, RF_PATH_A, RF_RX_G1, bRFRegOffsetMask, 0x00255);
-		else
-			PHY_SetRFReg(Adapter, RF_PATH_A, RF_RX_G1, bRFRegOffsetMask, pHalData->backupRF0x1A);
-	}
-#endif
 	//only for 92D SMSP >= C-cut
 	if(!IS_HARDWARE_TYPE_8192D(Adapter))
 		return;
-/*
-#ifdef CONFIG_USB_HCI
-#ifndef UNDER_CE
-	 if(!IS_HIGH_SPEED_USB(Adapter))
-			return;
-#endif
-#endif
-*/
-
 	//config path A for 5G
 	if(pHalData->CurrentBandType92D == BAND_ON_5G)
 	{
@@ -1818,17 +1769,7 @@ void Hal_SetCCKContinuousTx(PADAPTER pAdapter, u8 bStart)
 		write_bbreg(pAdapter, rCCK0_System, bCCKTxRate, cckrate);
 		write_bbreg(pAdapter, rCCK0_System, bCCKBBMode, 0x2);	//transmit mode
 		write_bbreg(pAdapter, rCCK0_System, bCCKScramble, bEnable); //turn on scramble setting
-
-#ifdef CONFIG_RTL8192C
-		// Patch for CCK 11M waveform
-		if (cckrate == MPT_RATE_1M)
-			write_bbreg(pAdapter, 0xA71, BIT(6), bDisable);
-		else
-			write_bbreg(pAdapter, 0xA71, BIT(6), bEnable);
-#endif
-
-	}
-	else {
+	} else {
 		RT_TRACE(_module_mp_, _drv_info_,
 			 ("SetCCKContinuousTx: test stop\n"));
 

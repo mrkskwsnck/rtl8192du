@@ -78,11 +78,7 @@ int rtw_IOL_append_cmds(struct xmit_frame *xmit_frame, u8 *IOL_cmds, u32 cmd_len
 	u32 ori_len;
 
 //Todo: bulkout without this offset
-#ifdef CONFIG_USB_HCI
 	buf_offset = TXDESC_OFFSET;
-#else
-	buf_offset = 0;
-#endif
 
 	ori_len = buf_offset+pattrib->pktlen;
 
@@ -93,7 +89,7 @@ int rtw_IOL_append_cmds(struct xmit_frame *xmit_frame, u8 *IOL_cmds, u32 cmd_len
 		return _FAIL;
 	}
 
-	_rtw_memcpy(xmit_frame->buf_addr + buf_offset + pattrib->pktlen, IOL_cmds, cmd_len);
+	memcpy(xmit_frame->buf_addr + buf_offset + pattrib->pktlen, IOL_cmds, cmd_len);
 	pattrib->pktlen += cmd_len;
 	pattrib->last_txcmdsz += cmd_len;
 
@@ -198,11 +194,7 @@ int rtw_IOL_append_END_cmd(struct xmit_frame *xmit_frame)
 	IOL_CMD end_cmd = {0x0, IOL_CMD_END, 0x0, 0x0};
 
 //Todo: bulkout without this offset
-#ifdef CONFIG_USB_HCI
 	buf_offset = TXDESC_OFFSET;
-#else
-	buf_offset = 0;
-#endif
 
 	ori_len = buf_offset+pattrib->pktlen;
 
@@ -213,7 +205,7 @@ int rtw_IOL_append_END_cmd(struct xmit_frame *xmit_frame)
 		return _FAIL;
 	}
 
-	_rtw_memcpy(xmit_frame->buf_addr + buf_offset + pattrib->pktlen, (u8*)&end_cmd, 8);
+	memcpy(xmit_frame->buf_addr + buf_offset + pattrib->pktlen, (u8*)&end_cmd, 8);
 	pattrib->pktlen += 8;
 	pattrib->last_txcmdsz += 8;
 
@@ -251,10 +243,8 @@ bool rtw_IOL_applied(ADAPTER *adapter)
 	if(adapter->registrypriv.force_iol)
 		return _TRUE;
 
-#ifdef CONFIG_USB_HCI
 	if(!adapter_to_dvobj(adapter)->ishighspeed)
 		return _TRUE;
-#endif
 
 	return _FALSE;
 }

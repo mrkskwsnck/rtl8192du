@@ -33,8 +33,8 @@
 
 static BOOLEAN
 CheckWriteH2C(
-	IN	PADAPTER		Adapter,
-	IN	u8		BoxNum
+	PADAPTER		Adapter,
+	u8		BoxNum
 )
 {
 	u8	valHMETFR;
@@ -53,8 +53,8 @@ CheckWriteH2C(
 
 static BOOLEAN
 CheckFwReadLastH2C(
-	IN	PADAPTER		Adapter,
-	IN	u8		BoxNum
+	PADAPTER		Adapter,
+	u8		BoxNum
 )
 {
 	u8	valHMETFR;
@@ -181,7 +181,7 @@ _func_enter_;
 			case 1:
 			{
 				BoxContent[0] &= ~(BIT7);
-				_rtw_memcpy((u8 *)(BoxContent)+1, pCmdBuffer+BufIndex, 1);
+				memcpy((u8 *)(BoxContent)+1, pCmdBuffer+BufIndex, 1);
 				//PlatformEFIOWrite4Byte(Adapter, BOXReg, *((pu4Byte)BoxContent));
 				//For Endian Free.
 				for(idx= 0; idx < 4; idx++)
@@ -193,7 +193,7 @@ _func_enter_;
 			case 2:
 			{
 				BoxContent[0] &= ~(BIT7);
-				_rtw_memcpy((u8 *)(BoxContent)+1, pCmdBuffer+BufIndex, 2);
+				memcpy((u8 *)(BoxContent)+1, pCmdBuffer+BufIndex, 2);
 				//PlatformEFIOWrite4Byte(Adapter, BOXReg, *((pu4Byte)BoxContent));
 				for(idx=0; idx < 4; idx++)
 				{
@@ -204,7 +204,7 @@ _func_enter_;
 			case 3:
 			{
 				BoxContent[0] &= ~(BIT7);
-				_rtw_memcpy((u8 *)(BoxContent)+1, pCmdBuffer+BufIndex, 3);
+				memcpy((u8 *)(BoxContent)+1, pCmdBuffer+BufIndex, 3);
 				//PlatformEFIOWrite4Byte(Adapter, BOXReg, *((pu4Byte)BoxContent));
 				for(idx = 0; idx < 4 ; idx++)
 				{
@@ -215,8 +215,8 @@ _func_enter_;
 			case 4:
 			{
 				BoxContent[0] |= (BIT7);
-				_rtw_memcpy((u8 *)(BoxExtContent), pCmdBuffer+BufIndex, 2);
-				_rtw_memcpy((u8 *)(BoxContent)+1, pCmdBuffer+BufIndex+2, 2);
+				memcpy((u8 *)(BoxExtContent), pCmdBuffer+BufIndex, 2);
+				memcpy((u8 *)(BoxContent)+1, pCmdBuffer+BufIndex+2, 2);
 				//PlatformEFIOWrite2Byte(Adapter, BOXExtReg, *((pu2Byte)BoxExtContent));
 				//PlatformEFIOWrite4Byte(Adapter, BOXReg, *((pu4Byte)BoxContent));
 				for(idx = 0 ; idx < 2 ; idx ++)
@@ -232,8 +232,8 @@ _func_enter_;
 			case 5:
 			{
 				BoxContent[0] |= (BIT7);
-				_rtw_memcpy((u8 *)(BoxExtContent), pCmdBuffer+BufIndex, 2);
-				_rtw_memcpy((u8 *)(BoxContent)+1, pCmdBuffer+BufIndex+2, 3);
+				memcpy((u8 *)(BoxExtContent), pCmdBuffer+BufIndex, 2);
+				memcpy((u8 *)(BoxContent)+1, pCmdBuffer+BufIndex+2, 3);
 				//PlatformEFIOWrite2Byte(Adapter, BOXExtReg, *((pu2Byte)BoxExtContent));
 				//PlatformEFIOWrite4Byte(Adapter, BOXReg, *((pu4Byte)BoxContent));
 				for(idx = 0 ; idx < 2 ; idx ++)
@@ -273,10 +273,10 @@ _func_exit_;
 
 VOID
 FillH2CCmd92D(
-	IN	PADAPTER	Adapter,
-	IN	u8	ElementID,
-	IN	u32	CmdLen,
-	IN	u8*	pCmdBuffer
+	PADAPTER	Adapter,
+	u8	ElementID,
+	u32	CmdLen,
+	u8*	pCmdBuffer
 )
 {
 	u32	tmpCmdBuf[2];
@@ -290,7 +290,7 @@ FillH2CCmd92D(
 	}
 
 	_rtw_memset(tmpCmdBuf, 0, 8);
-	_rtw_memcpy(tmpCmdBuf, pCmdBuffer, CmdLen);
+	memcpy(tmpCmdBuf, pCmdBuffer, CmdLen);
 
 	_FillH2CCmd92D(Adapter, ElementID, CmdLen, (u8 *)&tmpCmdBuf);
 
@@ -327,7 +327,7 @@ _func_enter_;
 
 	_rtw_memset(buf, 0, 5);
 	mask = cpu_to_le32( mask );
-	_rtw_memcpy(buf, &mask, 4);
+	memcpy(buf, &mask, 4);
 	buf[4]  = arg;
 
 	FillH2CCmd92D(padapter, H2C_RA_MASK, 5, buf);
@@ -408,9 +408,9 @@ void ConstructBeacon(_adapter *padapter, u8 *pframe, u32 *pLength)
 	fctrl = &(pwlanhdr->frame_ctl);
 	*(fctrl) = 0;
 
-	_rtw_memcpy(pwlanhdr->addr1, bc_addr, ETH_ALEN);
-	_rtw_memcpy(pwlanhdr->addr2, myid(&(padapter->eeprompriv)), ETH_ALEN);
-	_rtw_memcpy(pwlanhdr->addr3, get_my_bssid(cur_network), ETH_ALEN);
+	memcpy(pwlanhdr->addr1, bc_addr, ETH_ALEN);
+	memcpy(pwlanhdr->addr2, myid(&(padapter->eeprompriv)), ETH_ALEN);
+	memcpy(pwlanhdr->addr3, get_my_bssid(cur_network), ETH_ALEN);
 
 	SetSeqNum(pwlanhdr, 0/*pmlmeext->mgnt_seq*/);
 
@@ -424,13 +424,13 @@ void ConstructBeacon(_adapter *padapter, u8 *pframe, u32 *pLength)
 	pktlen += 8;
 
 	// beacon interval: 2 bytes
-	_rtw_memcpy(pframe, (unsigned char *)(rtw_get_beacon_interval_from_ie(cur_network->IEs)), 2);
+	memcpy(pframe, (unsigned char *)(rtw_get_beacon_interval_from_ie(cur_network->IEs)), 2);
 
 	pframe += 2;
 	pktlen += 2;
 
 	// capability info: 2 bytes
-	_rtw_memcpy(pframe, (unsigned char *)(rtw_get_capability_from_ie(cur_network->IEs)), 2);
+	memcpy(pframe, (unsigned char *)(rtw_get_capability_from_ie(cur_network->IEs)), 2);
 
 	pframe += 2;
 	pktlen += 2;
@@ -440,7 +440,7 @@ void ConstructBeacon(_adapter *padapter, u8 *pframe, u32 *pLength)
 	{
 		DBG_871X("ie len=%u\n", cur_network->IELength);
 		pktlen += cur_network->IELength - sizeof(NDIS_802_11_FIXED_IEs);
-		_rtw_memcpy(pframe, cur_network->IEs+sizeof(NDIS_802_11_FIXED_IEs), pktlen);
+		memcpy(pframe, cur_network->IEs+sizeof(NDIS_802_11_FIXED_IEs), pktlen);
 
 		goto _ConstructBeacon;
 	}
@@ -515,10 +515,10 @@ void ConstructPSPoll(_adapter *padapter, u8 *pframe, u32 *pLength)
 	SetDuration(pframe, (pmlmeinfo->aid| 0xc000));
 
 	// BSSID.
-	_rtw_memcpy(pwlanhdr->addr1, get_my_bssid(&(pmlmeinfo->network)), ETH_ALEN);
+	memcpy(pwlanhdr->addr1, get_my_bssid(&(pmlmeinfo->network)), ETH_ALEN);
 
 	// TA.
-	_rtw_memcpy(pwlanhdr->addr2, myid(&(padapter->eeprompriv)), ETH_ALEN);
+	memcpy(pwlanhdr->addr2, myid(&(padapter->eeprompriv)), ETH_ALEN);
 
 	*pLength = 16;
 }
@@ -549,21 +549,21 @@ void ConstructNullFunctionData(_adapter *padapter, u8 *pframe, u32 *pLength, u8 
 	{
 		case Ndis802_11Infrastructure:
 			SetToDs(fctrl);
-			_rtw_memcpy(pwlanhdr->addr1, get_my_bssid(&(pmlmeinfo->network)), ETH_ALEN);
-			_rtw_memcpy(pwlanhdr->addr2, myid(&(padapter->eeprompriv)), ETH_ALEN);
-			_rtw_memcpy(pwlanhdr->addr3, StaAddr, ETH_ALEN);
+			memcpy(pwlanhdr->addr1, get_my_bssid(&(pmlmeinfo->network)), ETH_ALEN);
+			memcpy(pwlanhdr->addr2, myid(&(padapter->eeprompriv)), ETH_ALEN);
+			memcpy(pwlanhdr->addr3, StaAddr, ETH_ALEN);
 			break;
 		case Ndis802_11APMode:
 			SetFrDs(fctrl);
-			_rtw_memcpy(pwlanhdr->addr1, StaAddr, ETH_ALEN);
-			_rtw_memcpy(pwlanhdr->addr2, get_my_bssid(&(pmlmeinfo->network)), ETH_ALEN);
-			_rtw_memcpy(pwlanhdr->addr3, myid(&(padapter->eeprompriv)), ETH_ALEN);
+			memcpy(pwlanhdr->addr1, StaAddr, ETH_ALEN);
+			memcpy(pwlanhdr->addr2, get_my_bssid(&(pmlmeinfo->network)), ETH_ALEN);
+			memcpy(pwlanhdr->addr3, myid(&(padapter->eeprompriv)), ETH_ALEN);
 			break;
 		case Ndis802_11IBSS:
 		default:
-			_rtw_memcpy(pwlanhdr->addr1, StaAddr, ETH_ALEN);
-			_rtw_memcpy(pwlanhdr->addr2, myid(&(padapter->eeprompriv)), ETH_ALEN);
-			_rtw_memcpy(pwlanhdr->addr3, get_my_bssid(&(pmlmeinfo->network)), ETH_ALEN);
+			memcpy(pwlanhdr->addr1, StaAddr, ETH_ALEN);
+			memcpy(pwlanhdr->addr2, myid(&(padapter->eeprompriv)), ETH_ALEN);
+			memcpy(pwlanhdr->addr3, get_my_bssid(&(pmlmeinfo->network)), ETH_ALEN);
 			break;
 	}
 
@@ -598,9 +598,9 @@ void ConstructProbeRsp(_adapter *padapter, u8 *pframe, u32 *pLength, u8 *StaAddr
 
 	fctrl = &(pwlanhdr->frame_ctl);
 	*(fctrl) = 0;
-	_rtw_memcpy(pwlanhdr->addr1, StaAddr, ETH_ALEN);
-	_rtw_memcpy(pwlanhdr->addr2, mac, ETH_ALEN);
-	_rtw_memcpy(pwlanhdr->addr3, bssid, ETH_ALEN);
+	memcpy(pwlanhdr->addr1, StaAddr, ETH_ALEN);
+	memcpy(pwlanhdr->addr2, mac, ETH_ALEN);
+	memcpy(pwlanhdr->addr3, bssid, ETH_ALEN);
 
 	SetSeqNum(pwlanhdr, 0);
 	SetFrameSubType(fctrl, WIFI_PROBERSP);
@@ -611,7 +611,7 @@ void ConstructProbeRsp(_adapter *padapter, u8 *pframe, u32 *pLength, u8 *StaAddr
 	if(cur_network->IELength>MAX_IE_SZ)
 		return;
 
-	_rtw_memcpy(pframe, cur_network->IEs, cur_network->IELength);
+	memcpy(pframe, cur_network->IEs, cur_network->IELength);
 	pframe += cur_network->IELength;
 	pktlen += cur_network->IELength;
 
@@ -626,10 +626,10 @@ void ConstructProbeRsp(_adapter *padapter, u8 *pframe, u32 *pLength, u8 *StaAddr
 //
 static VOID
 FillFakeTxDescriptor92D(
-	IN PADAPTER		Adapter,
-	IN u8*			pDesc,
-	IN u32			BufferLen,
-	IN BOOLEAN		IsPsPoll
+	PADAPTER		Adapter,
+	u8*			pDesc,
+	u32			BufferLen,
+	BOOLEAN		IsPsPoll
 )
 {
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(Adapter);
@@ -665,11 +665,9 @@ FillFakeTxDescriptor92D(
 	if(pHalData->CurrentBandType92D == BAND_ON_5G)
 		ptxdesc->txdw5 |= cpu_to_le32(BIT(2));// use OFDM 6Mbps
 
-#ifdef CONFIG_USB_HCI
 	// USB interface drop packet if the checksum of descriptor isn't correct.
 	// Using this checksum can let hardware recovery from packet bulk out error (e.g. Cancel URC, Bulk out error.).
 	rtl8192du_cal_txdesc_chksum(ptxdesc);
-#endif
 
 	RT_PRINT_DATA(_module_rtl8712_cmd_c_, _drv_info_, "FillFakeTxDescriptor92D(): H2C Tx Desc Content ----->\n", pDesc, TXDESC_SIZE);
 }
@@ -704,7 +702,7 @@ void SetFwRsvdPagePkt(PADAPTER Adapter, BOOLEAN bDLFinished)
 
 	DBG_871X("%s\n", __FUNCTION__);
 
-	ReservedPagePacket = (u8*)rtw_malloc(1000);
+	ReservedPagePacket = kzalloc(1000, in_interrupt() ? GFP_ATOMIC : GFP_KERNEL);
 	if(ReservedPagePacket == NULL){
 		DBG_871X("%s(): alloc ReservedPagePacket fail !!!\n", __FUNCTION__);
 		return;
@@ -714,13 +712,8 @@ void SetFwRsvdPagePkt(PADAPTER Adapter, BOOLEAN bDLFinished)
 
 	TxDescLen = 32;//TX_DESC_SIZE;
 
-#ifdef CONFIG_USB_HCI
 	BufIndex = TXDESC_OFFSET;
 	TxDescOffset = TxDescLen + PACKET_OFFSET_SZ;;
-#else
-	BufIndex = 0;
-	TxDescOffset = 0;
-#endif
 
 	//(1) beacon
 	ConstructBeacon(Adapter,&ReservedPagePacket[BufIndex],&BeaconLength);
@@ -816,7 +809,7 @@ void SetFwRsvdPagePkt(PADAPTER Adapter, BOOLEAN bDLFinished)
 	update_mgntframe_attrib(Adapter, pattrib);
 	pattrib->qsel = 0x10;
 	pattrib->pktlen = pattrib->last_txcmdsz = TotalPacketLen - TxDescLen;
-	_rtw_memcpy(pmgntframe->buf_addr, ReservedPagePacket, TotalPacketLen);
+	memcpy(pmgntframe->buf_addr, ReservedPagePacket, TotalPacketLen);
 
 	rtw_hal_mgnt_xmit(Adapter, pmgntframe);
 

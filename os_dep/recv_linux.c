@@ -22,16 +22,11 @@
 #include <drv_conf.h>
 #include <osdep_service.h>
 #include <drv_types.h>
-
 #include <wifi.h>
 #include <recv_osdep.h>
-
 #include <osdep_intf.h>
 #include <ethernet.h>
-
-#ifdef CONFIG_USB_HCI
 #include <usb_ops.h>
-#endif
 
 //init os related resource in struct recv_priv
 int rtw_os_recv_resource_init(struct recv_priv *precvpriv, _adapter *padapter)
@@ -64,7 +59,6 @@ int rtw_os_recvbuf_resource_alloc(_adapter *padapter, struct recv_buf *precvbuf)
 {
 	int res=_SUCCESS;
 
-#ifdef CONFIG_USB_HCI
 	struct dvobj_priv	*pdvobjpriv = adapter_to_dvobj(padapter);
 	struct usb_device	*pusbd = pdvobjpriv->pusbdev;
 
@@ -93,8 +87,6 @@ int rtw_os_recvbuf_resource_alloc(_adapter *padapter, struct recv_buf *precvbuf)
 		return _FAIL;
 	#endif //CONFIG_USE_USB_BUFFER_ALLOC_RX
 
-#endif //CONFIG_USB_HCI
-
 	return res;
 }
 
@@ -102,8 +94,6 @@ int rtw_os_recvbuf_resource_alloc(_adapter *padapter, struct recv_buf *precvbuf)
 int rtw_os_recvbuf_resource_free(_adapter *padapter, struct recv_buf *precvbuf)
 {
 	int ret = _SUCCESS;
-
-#ifdef CONFIG_USB_HCI
 
 #ifdef CONFIG_USE_USB_BUFFER_ALLOC_RX
 
@@ -121,9 +111,6 @@ int rtw_os_recvbuf_resource_free(_adapter *padapter, struct recv_buf *precvbuf)
 		//usb_kill_urb(precvbuf->purb);
 		usb_free_urb(precvbuf->purb);
 	}
-
-#endif //CONFIG_USB_HCI
-
 
 	if(precvbuf->pskb)
 		rtw_skb_free(precvbuf->pskb);
@@ -189,7 +176,7 @@ void rtw_handle_tkip_mic_err(_adapter *padapter,u8 bgroup)
 	}
 
 	ev.src_addr.sa_family = ARPHRD_ETHER;
-	_rtw_memcpy( ev.src_addr.sa_data, &pmlmepriv->assoc_bssid[ 0 ], ETH_ALEN );
+	memcpy( ev.src_addr.sa_data, &pmlmepriv->assoc_bssid[ 0 ], ETH_ALEN );
 
 	_rtw_memset( &wrqu, 0x00, sizeof( wrqu ) );
 	wrqu.data.length = sizeof( ev );
@@ -281,7 +268,9 @@ _func_enter_;
 
 	skb->len = precv_frame->u.hdr.len;
 
-	RT_TRACE(_module_recv_osdep_c_,_drv_info_,("\n skb->head=%p skb->data=%p skb->tail=%p skb->end=%p skb->len=%d\n", skb->head, skb->data, skb->tail, skb->end, skb->len));
+	RT_TRACE(_module_recv_osdep_c_,_drv_info_,
+		 ("\n skb->head=%p skb->data=%p skb->tail=0x%x skb->end=0x%x skb->len=%d\n",
+		  skb->head, skb->data, skb->tail, skb->end, skb->len));
 
 	if(check_fwstate(pmlmepriv, WIFI_AP_STATE) == _TRUE)
 	{
@@ -414,8 +403,6 @@ void rtw_os_read_port(_adapter *padapter, struct recv_buf *precvbuf)
 {
 	struct recv_priv *precvpriv = &padapter->recvpriv;
 
-#ifdef CONFIG_USB_HCI
-
 	precvbuf->ref_cnt--;
 
 	//free skb in recv_buf
@@ -425,16 +412,7 @@ void rtw_os_read_port(_adapter *padapter, struct recv_buf *precvbuf)
 	precvbuf->reuse = _FALSE;
 
 	if(precvbuf->irp_pending == _FALSE)
-	{
 		rtw_read_port(padapter, precvpriv->ff_hwaddr, 0, (unsigned char *)precvbuf);
-	}
-
-
-#endif
-#ifdef CONFIG_SDIO_HCI
-		precvbuf->pskb = NULL;
-#endif
-
 }
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 void _rtw_reordering_ctrl_timeout_handler (void *FunctionContext)

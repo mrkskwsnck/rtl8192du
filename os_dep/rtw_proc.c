@@ -63,12 +63,19 @@ inline struct proc_dir_entry *rtw_proc_create_dir(const char *name, struct proc_
 	return entry;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+inline struct proc_dir_entry *rtw_proc_create_entry(const char *name, struct proc_dir_entry *parent,
+	const struct proc_ops *pops, void * data)
+#else
 inline struct proc_dir_entry *rtw_proc_create_entry(const char *name, struct proc_dir_entry *parent,
 	const struct file_operations *fops, void * data)
+#endif
 {
 	struct proc_dir_entry *entry;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+	entry = proc_create_data(name,  S_IFREG|S_IRUGO, parent, pops, data);
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26))
 	entry = proc_create_data(name,  S_IFREG|S_IRUGO, parent, fops, data);
 #else
 	entry = create_proc_entry(name, S_IFREG|S_IRUGO, parent);
@@ -148,14 +155,22 @@ const int drv_proc_hdls_num = sizeof(drv_proc_hdls) / sizeof(struct rtw_proc_hdl
 static int rtw_drv_proc_open(struct inode *inode, struct file *file)
 {
 	//struct net_device *dev = proc_get_parent_data(inode);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0)
 	ssize_t index = (ssize_t)PDE_DATA(inode);
+#else
+	ssize_t index = (ssize_t)pde_data(inode);
+#endif
 	const struct rtw_proc_hdl *hdl = drv_proc_hdls+index;
        return single_open(file, hdl->show, NULL);
 }
 
 static ssize_t rtw_drv_proc_write(struct file *file, const char __user *buffer, size_t count, loff_t *pos)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0)
 	ssize_t index = (ssize_t)PDE_DATA(file_inode(file));
+#else
+	ssize_t index = (ssize_t)pde_data(file_inode(file));
+#endif
 	const struct rtw_proc_hdl *hdl = drv_proc_hdls+index;
 	ssize_t (*write)(struct file *, const char __user *, size_t, loff_t *, void *) = hdl->write;
 
@@ -165,6 +180,15 @@ static ssize_t rtw_drv_proc_write(struct file *file, const char __user *buffer, 
 	return -EROFS;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static const struct proc_ops rtw_drv_proc_ops = {
+	.proc_open = rtw_drv_proc_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+	.proc_write = rtw_drv_proc_write,
+};
+#else
 static const struct file_operations rtw_drv_proc_fops = {
 	.owner = THIS_MODULE,
 	.open = rtw_drv_proc_open,
@@ -173,6 +197,7 @@ static const struct file_operations rtw_drv_proc_fops = {
 	.release = single_release,
 	.write = rtw_drv_proc_write,
 };
+#endif
 
 int rtw_drv_proc_init(void)
 {
@@ -193,7 +218,11 @@ int rtw_drv_proc_init(void)
 	}
 
 	for (i=0;i<drv_proc_hdls_num;i++) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+		entry = rtw_proc_create_entry(drv_proc_hdls[i].name, rtw_proc, &rtw_drv_proc_ops, (void *)i);
+#else
 		entry = rtw_proc_create_entry(drv_proc_hdls[i].name, rtw_proc, &rtw_drv_proc_fops, (void *)i);
+#endif
 		if (!entry) {
 			rtw_warn_on(1);
 			goto exit;
@@ -219,18 +248,6 @@ void rtw_drv_proc_deinit(void)
 	remove_proc_entry(RTW_PROC_NAME, get_proc_net);
 	rtw_proc = NULL;
 }
-
-#ifdef CONFIG_SDIO_HCI
-static int proc_get_sd_f0_reg_dump(struct seq_file *m, void *v)
-{
-	struct net_device *dev = m->private;
-	_adapter *adapter = (_adapter *)rtw_netdev_priv(dev);
-
-	sd_f0_reg_dump(m, adapter);
-
-	return 0;
-}
-#endif /* CONFIG_SDIO_HCI */
 
 static int proc_get_mac_reg_dump(struct seq_file *m, void *v)
 {
@@ -442,10 +459,6 @@ const struct rtw_proc_hdl adapter_proc_hdls [] = {
 	{"all_sta_info", proc_get_all_sta_info, NULL},
 #endif
 
-#ifdef DBG_MEMORY_LEAK
-	{"_malloc_cnt", proc_get_malloc_cnt, NULL},
-#endif
-
 #ifdef CONFIG_FIND_BEST_CHANNEL
 
 	{"best_channel", proc_get_best_channel, proc_set_best_channel},
@@ -473,7 +486,11 @@ const int adapter_proc_hdls_num = sizeof(adapter_proc_hdls) / sizeof(struct rtw_
 
 static int rtw_adapter_proc_open(struct inode *inode, struct file *file)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0)
 	ssize_t index = (ssize_t)PDE_DATA(inode);
+#else
+	ssize_t index = (ssize_t)pde_data(inode);
+#endif
 	const struct rtw_proc_hdl *hdl = adapter_proc_hdls+index;
 
 	return single_open(file, hdl->show, proc_get_parent_data(inode));
@@ -481,7 +498,11 @@ static int rtw_adapter_proc_open(struct inode *inode, struct file *file)
 
 static ssize_t rtw_adapter_proc_write(struct file *file, const char __user *buffer, size_t count, loff_t *pos)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0)
 	ssize_t index = (ssize_t)PDE_DATA(file_inode(file));
+#else
+	ssize_t index = (ssize_t)pde_data(file_inode(file));
+#endif
 	const struct rtw_proc_hdl *hdl = adapter_proc_hdls+index;
 	ssize_t (*write)(struct file *, const char __user *, size_t, loff_t *, void *) = hdl->write;
 
@@ -491,6 +512,15 @@ static ssize_t rtw_adapter_proc_write(struct file *file, const char __user *buff
 	return -EROFS;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static const struct proc_ops rtw_adapter_proc_ops = {
+	.proc_open = rtw_adapter_proc_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+	.proc_write = rtw_adapter_proc_write,
+};
+#else
 static const struct file_operations rtw_adapter_proc_fops = {
 	.owner = THIS_MODULE,
 	.open = rtw_adapter_proc_open,
@@ -499,6 +529,7 @@ static const struct file_operations rtw_adapter_proc_fops = {
 	.release = single_release,
 	.write = rtw_adapter_proc_write,
 };
+#endif
 
 int proc_get_dm_ability(struct seq_file *m, void *v)
 {
@@ -660,7 +691,11 @@ const int dm_proc_hdls_num = sizeof(dm_proc_hdls) / sizeof(struct rtw_proc_hdl);
 
 static int rtw_dm_proc_open(struct inode *inode, struct file *file)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0)
 	ssize_t index = (ssize_t)PDE_DATA(inode);
+#else
+	ssize_t index = (ssize_t)pde_data(inode);
+#endif
 	const struct rtw_proc_hdl *hdl = dm_proc_hdls+index;
 
 	return single_open(file, hdl->show, proc_get_parent_data(inode));
@@ -668,7 +703,11 @@ static int rtw_dm_proc_open(struct inode *inode, struct file *file)
 
 static ssize_t rtw_dm_proc_write(struct file *file, const char __user *buffer, size_t count, loff_t *pos)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0)
 	ssize_t index = (ssize_t)PDE_DATA(file_inode(file));
+#else
+	ssize_t index = (ssize_t)pde_data(file_inode(file));
+#endif
 	const struct rtw_proc_hdl *hdl = dm_proc_hdls+index;
 	ssize_t (*write)(struct file *, const char __user *, size_t, loff_t *, void *) = hdl->write;
 
@@ -678,6 +717,15 @@ static ssize_t rtw_dm_proc_write(struct file *file, const char __user *buffer, s
 	return -EROFS;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+static const struct proc_ops rtw_dm_proc_ops = {
+	.proc_open = rtw_dm_proc_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+	.proc_write = rtw_dm_proc_write,
+};
+#else
 static const struct file_operations rtw_dm_proc_fops = {
 	.owner = THIS_MODULE,
 	.open = rtw_dm_proc_open,
@@ -686,6 +734,7 @@ static const struct file_operations rtw_dm_proc_fops = {
 	.release = single_release,
 	.write = rtw_dm_proc_write,
 };
+#endif
 
 struct proc_dir_entry *rtw_dm_proc_init(struct net_device *dev)
 {
@@ -713,7 +762,11 @@ struct proc_dir_entry *rtw_dm_proc_init(struct net_device *dev)
 	adapter->dir_dm = dir_dm;
 
 	for (i=0;i<dm_proc_hdls_num;i++) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+		entry = rtw_proc_create_entry(dm_proc_hdls[i].name, dir_dm, &rtw_dm_proc_ops, (void *)i);
+#else
 		entry = rtw_proc_create_entry(dm_proc_hdls[i].name, dir_dm, &rtw_dm_proc_fops, (void *)i);
+#endif
 		if (!entry) {
 			rtw_warn_on(1);
 			goto exit;
@@ -772,7 +825,11 @@ struct proc_dir_entry *rtw_adapter_proc_init(struct net_device *dev)
 	adapter->dir_dev = dir_dev;
 
 	for (i=0;i<adapter_proc_hdls_num;i++) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0))
+		entry = rtw_proc_create_entry(adapter_proc_hdls[i].name, dir_dev, &rtw_adapter_proc_ops, (void *)i);
+#else
 		entry = rtw_proc_create_entry(adapter_proc_hdls[i].name, dir_dev, &rtw_adapter_proc_fops, (void *)i);
+#endif
 		if (!entry) {
 			rtw_warn_on(1);
 			goto exit;
